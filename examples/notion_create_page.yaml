@@ -1,0 +1,52 @@
+# Notion — Create Page
+#
+# Tier 1 gear that creates a new page in a known Notion database.
+# Requires NOTION_TOKEN in the operator's secret source.
+
+cog_gear: v1
+tier: http
+name: notion_create_page
+description: |
+  Create a new page in a Notion database. Provide database_id (the
+  32-char hex ID of the target database) and properties (a map of
+  property name to value). Returns the created page's id and URL.
+
+endpoint:
+  method: POST
+  url: "https://api.notion.com/v1/pages"
+  headers:
+    Authorization: "Bearer ${secret:NOTION_TOKEN}"
+    Notion-Version: "2022-06-28"
+    Content-Type: application/json
+  body:
+    parent:
+      database_id: "{{ .database_id }}"
+    properties: "{{ .properties }}"
+
+input_schema:
+  type: object
+  required: [database_id, properties]
+  properties:
+    database_id:
+      type: string
+      description: Notion database ID (32 hex chars, no dashes).
+      pattern: "^[a-f0-9]{32}$"
+    properties:
+      type: object
+      description: |
+        Map of property name → Notion property value. See Notion's
+        API docs for the per-type shape. Common: { "Name": { "title":
+        [{ "text": { "content": "Page title" }}] }}.
+
+output_schema:
+  type: object
+  properties:
+    id: { type: string }
+    url: { type: string }
+    created_time: { type: string, format: date-time }
+
+permissions:
+  network:
+    - host: api.notion.com
+      port: 443
+  timeout_seconds: 15

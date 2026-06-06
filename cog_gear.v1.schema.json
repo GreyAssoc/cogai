@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cogai.github.io/cog_gear.v1.schema.json",
+  "title": "Cog Gear v1",
+  "description": "Declaration format for Tier 1 (HTTP) and Tier 2 (webhook) gears loaded by the cog engine at runtime.",
+  "type": "object",
+  "required": ["cog_gear", "tier", "name", "description", "endpoint", "input_schema", "permissions"],
+  "additionalProperties": false,
+  "properties": {
+    "cog_gear": {
+      "type": "string",
+      "const": "v1",
+      "description": "Declaration format version. Currently only v1."
+    },
+    "tier": {
+      "type": "string",
+      "enum": ["http", "webhook"],
+      "description": "http = Tier 1 (direct HTTPS); webhook = Tier 2 (external workflow)."
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{2,63}$",
+      "description": "Lowercase snake_case identifier, 3-64 chars. Unique within the loading deployment."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 1024,
+      "description": "Read by the model when deciding to invoke. Be specific."
+    },
+    "endpoint": {
+      "$ref": "#/$defs/endpoint"
+    },
+    "input_schema": {
+      "type": "object",
+      "description": "JSON Schema for the gear's input."
+    },
+    "output_schema": {
+      "type": "object",
+      "description": "Optional JSON Schema for the gear's output."
+    },
+    "permissions": {
+      "$ref": "#/$defs/permissions"
+    },
+    "external_workflow": {
+      "$ref": "#/$defs/external_workflow"
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "tier": { "const": "webhook" } } },
+      "then": { "required": ["external_workflow"] }
+    },
+    {
+      "if": { "properties": { "tier": { "const": "http" } } },
+      "then": { "not": { "required": ["external_workflow"] } }
+    }
+  ],
+  "$defs": {
+    "endpoint": {
+      "type": "object",
+      "required": ["method", "url"],
+      "additionalProperties": false,
+      "properties": {
+        "method": {
+          "type": "string",
+          "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"]
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "HTTPS URL. Path params use {{ .name }} templating; host must match permissions.network[].host."
+        },
+        "query": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "headers": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Header values may reference secrets via ${secret:NAME}."
+        },
+        "body": {
+          "description": "Request body. Templated; JSON-encoded unless headers override Content-Type."
+        }
+      }
+    },
+    "permissions": {
+      "type": "object",
+      "required": ["network", "timeout_seconds"],
+      "additionalProperties": false,
+      "properties": {
+        "network": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["host", "port"],
+            "additionalProperties": false,
+            "properties": {
+              "host": { "type": "string", "format": "hostname" },
+              "port": { "type": "integer", "minimum": 1, "maximum": 65535 }
+            }
+          }
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 60,
+          "description": "Per-call timeout. Engine maximum default 60s."
+        },
+        "max_calls_per_minute": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "file_read": {
+          "description": "Tier 1 and Tier 2 must not declare file_read.",
+          "not": { "type": "array", "minItems": 1 }
+        },
+        "file_write": {
+          "description": "Tier 1 and Tier 2 must not declare file_write.",
+          "not": { "type": "array", "minItems": 1 }
+        },
+        "subprocess": {
+          "const": false,
+          "description": "Tier 1 and Tier 2 forbid subprocess."
+        }
+      }
+    },
+    "external_workflow": {
+      "type": "object",
+      "required": ["platform"],
+      "additionalProperties": false,
+      "properties": {
+        "platform": {
+          "type": "string",
+          "description": "Workflow platform name (zapier, n8n, make, etc.)."
+        },
+        "workflow_id": {
+          "type": "string",
+          "description": "Optional workflow-platform-side identifier."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,82 @@
+# Linear — List Issues
+#
+# Tier 1 gear that lists issues from a Linear team via the GraphQL
+# API. Requires LINEAR_API_KEY in the operator's secret source.
+
+cog_gear: v1
+tier: http
+name: linear_list_issues
+description: |
+  List issues from a Linear team. Provide team_id and optional
+  filters (state, assignee, label). Returns issue ID, title, state,
+  assignee, and URL. Supports cursor-based pagination via after.
+
+endpoint:
+  method: POST
+  url: "https://api.linear.app/graphql"
+  headers:
+    Authorization: "${secret:LINEAR_API_KEY}"
+    Content-Type: "application/json"
+  body:
+    query: |
+      query Issues($teamId: String!, $first: Int!, $after: String, $stateFilter: IssueFilter) {
+        team(id: $teamId) {
+          issues(first: $first, after: $after, filter: $stateFilter) {
+            edges {
+              node {
+                id
+                identifier
+                title
+                state { name type }
+                assignee { name email }
+                url
+              }
+            }
+            pageInfo { hasNextPage endCursor }
+          }
+        }
+      }
+    variables:
+      teamId: "{{ .team_id }}"
+      first: "{{ .first }}"
+      after: "{{ .after }}"
+      stateFilter: "{{ .state_filter }}"
+
+input_schema:
+  type: object
+  required: [team_id]
+  properties:
+    team_id:
+      type: string
+      description: Linear team ID (the team object's id, not the team key).
+    first:
+      type: integer
+      minimum: 1
+      maximum: 100
+      description: Page size. Defaults to 25 if omitted.
+    after:
+      type: string
+      description: Cursor for pagination, from the previous page's pageInfo.endCursor.
+    state_filter:
+      type: object
+      description: |
+        Linear IssueFilter shape. Example for "in-progress issues":
+        {"state": {"type": {"in": ["unstarted", "started"]}}}
+
+output_schema:
+  type: object
+  properties:
+    data:
+      type: object
+      properties:
+        team:
+          type: object
+          properties:
+            issues:
+              type: object
+
+permissions:
+  network:
+    - host: api.linear.app
+      port: 443
+  timeout_seconds: 15

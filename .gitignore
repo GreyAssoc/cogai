@@ -1,0 +1,11 @@
+# Local config — never committed to the public repo.
+.env
+.env.local
+.env.*.local
+
+# Go build artefacts.
+*.exe
+*.test
+*.out
+/dist/
+cog-gear-lint/cog-gear-lint

@@ -1,0 +1,68 @@
+# GitHub — Create Issue
+#
+# Tier 1 gear that creates an issue in a GitHub repository.
+# Requires GITHUB_TOKEN in the operator's secret source (a fine-
+# grained PAT scoped to the target repo's "issues: write" permission).
+
+cog_gear: v1
+tier: http
+name: github_create_issue
+description: |
+  Create a new issue in a GitHub repository. Provide owner, repo,
+  title, optional body (markdown), labels, and assignees. Returns
+  the created issue number, URL, and node_id.
+
+endpoint:
+  method: POST
+  url: "https://api.github.com/repos/{{ .owner }}/{{ .repo }}/issues"
+  headers:
+    Authorization: "Bearer ${secret:GITHUB_TOKEN}"
+    Accept: "application/vnd.github+json"
+    X-GitHub-Api-Version: "2022-11-28"
+    Content-Type: "application/json"
+  body:
+    title: "{{ .title }}"
+    body: "{{ .body }}"
+    labels: "{{ .labels }}"
+    assignees: "{{ .assignees }}"
+
+input_schema:
+  type: object
+  required: [owner, repo, title]
+  properties:
+    owner:
+      type: string
+      description: Repository owner (org or user name).
+    repo:
+      type: string
+      description: Repository name (without owner prefix).
+    title:
+      type: string
+      minLength: 1
+      maxLength: 256
+      description: Issue title.
+    body:
+      type: string
+      description: Issue body, Markdown.
+    labels:
+      type: array
+      items: { type: string }
+      description: Labels to apply (must exist on the repo).
+    assignees:
+      type: array
+      items: { type: string }
+      description: Usernames to assign (must have repo access).
+
+output_schema:
+  type: object
+  properties:
+    number: { type: integer }
+    html_url: { type: string, format: uri }
+    node_id: { type: string }
+    state: { type: string, enum: [open, closed] }
+
+permissions:
+  network:
+    - host: api.github.com
+      port: 443
+  timeout_seconds: 15

@@ -1,0 +1,51 @@
+# Stripe — Get Customer
+#
+# Tier 1 gear that retrieves a Stripe customer by ID. Requires
+# STRIPE_API_KEY in the operator's secret source.
+
+cog_gear: v1
+tier: http
+name: stripe_get_customer
+description: |
+  Retrieve a Stripe customer record by ID. Returns the full customer
+  object including email, name, metadata, subscriptions, and default
+  payment method (when expanded).
+
+endpoint:
+  method: GET
+  url: "https://api.stripe.com/v1/customers/{{ .customer_id }}"
+  headers:
+    Authorization: "Bearer ${secret:STRIPE_API_KEY}"
+  query:
+    expand: "{{ .expand }}"
+
+input_schema:
+  type: object
+  required: [customer_id]
+  properties:
+    customer_id:
+      type: string
+      description: Stripe customer ID (starts with cus_).
+      pattern: "^cus_[A-Za-z0-9]+$"
+    expand:
+      type: string
+      description: |
+        Optional comma-separated list of fields to expand (e.g.
+        "default_source,subscriptions"). Omit for the unexpanded
+        customer.
+
+output_schema:
+  type: object
+  properties:
+    id: { type: string }
+    object: { type: string, const: customer }
+    email: { type: string, format: email }
+    name: { type: string }
+    metadata: { type: object }
+    created: { type: integer, description: Unix timestamp }
+
+permissions:
+  network:
+    - host: api.stripe.com
+      port: 443
+  timeout_seconds: 10

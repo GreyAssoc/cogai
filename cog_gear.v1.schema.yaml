@@ -1,0 +1,264 @@
+# Cog Gear v1 — Meta-Schema (YAML form)
+#
+# Canonical declaration format for Tier 1 (HTTP) and Tier 2 (webhook)
+# gears that cog loads at runtime. The cog engine's loader enforces
+# the same rules described here; cog-gear-lint enforces them
+# offline so authors can validate before submitting.
+#
+# Top-level: every declaration is a YAML/JSON object with these
+# required fields:
+#
+#   cog_gear:    Literal string "v1".
+#   tier:        Literal string "http" or "webhook".
+#   name:        Lowercase identifier, snake_case, 3-64 chars.
+#                Must be unique within the loading deployment.
+#   description: Plain prose describing what the gear does. The
+#                model reads this to decide when to invoke; write
+#                clearly. 30-300 characters recommended.
+#   endpoint:    See "endpoint" section below.
+#   input_schema: JSON Schema describing the gear's input.
+#   permissions: See "permissions" section below.
+#
+# Optional fields:
+#
+#   output_schema:    JSON Schema describing the gear's output.
+#                     Recommended; aids agent reasoning.
+#   external_workflow: REQUIRED if tier=webhook. Forbidden if tier=http.
+
+version: v1
+
+# Tier envelopes — the contract this schema enforces.
+tier_envelopes:
+
+  http:
+    # Tier 1 — direct HTTPS call to a declared host.
+    description: |
+      One authenticated HTTPS request to one or more declared
+      hosts. JSON in, JSON out. The agent receives the response
+      body (or extracted fields) as the gear result.
+    allowed_permissions:
+      network: required        # at least one host:port pair
+      timeout_seconds: required # capped at engine maximum
+      max_calls_per_minute: optional
+    forbidden_permissions:
+      file_read: must_be_empty_or_absent
+      file_write: must_be_empty_or_absent
+      subprocess: must_be_false
+    forbidden_fields:
+      - external_workflow
+
+  webhook:
+    # Tier 2 — same as HTTP, plus the visible degradation that
+    # signals the gear may transit Zapier/n8n/Make-style platforms.
+    description: |
+      Same wire envelope as http, plus an external_workflow
+      admission block. Loaded only when the operator opt-in
+      `AllowExternalWorkflowGears` is set, and surfaces visible
+      degradation (model-description prefix, admin-UI badge,
+      warning log on load).
+    allowed_permissions:
+      network: required
+      timeout_seconds: required
+      max_calls_per_minute: optional
+    forbidden_permissions:
+      file_read: must_be_empty_or_absent
+      file_write: must_be_empty_or_absent
+      subprocess: must_be_false
+    required_fields:
+      - external_workflow
+
+# Field definitions — describing what each top-level field carries.
+fields:
+
+  cog_gear:
+    type: string
+    required: true
+    allowed_values: [v1]
+
+  tier:
+    type: string
+    required: true
+    allowed_values: [http, webhook]
+
+  name:
+    type: string
+    required: true
+    pattern: "^[a-z][a-z0-9_]{2,63}$"
+    description: |
+      Lowercase snake_case. Used by the model to invoke the gear
+      and by the registry as the unique key.
+
+  description:
+    type: string
+    required: true
+    min_length: 10
+    max_length: 1024
+    description: |
+      Read by the model when deciding whether to invoke. Be
+      specific about what the gear does and what inputs it needs.
+
+  endpoint:
+    type: object
+    required: true
+    fields:
+      method:
+        type: string
+        required: true
+        allowed_values: [GET, POST, PUT, PATCH, DELETE]
+      url:
+        type: string
+        required: true
+        description: |
+          Full HTTPS URL. Path parameters use {{ .param_name }}
+          templating; the host portion is treated as immutable
+          at runtime and must match one of the declared
+          permissions.network[].host entries.
+      query:
+        type: object
+        required: false
+        description: Static or templated query parameters.
+      headers:
+        type: object
+        required: false
+        description: |
+          Headers added to the request. Secrets use ${secret:NAME}
+          syntax — resolved from the operator's configured secret
+          source at load time, never serialised back into traces.
+      body:
+        type: any
+        required: false
+        description: |
+          Request body. Templated via {{ }} expressions; encoded
+          as JSON by default (Content-Type: application/json
+          assumed unless overridden in headers).
+
+  input_schema:
+    type: object
+    required: true
+    description: |
+      JSON Schema for the gear's input. The model sees this as
+      the tool's input shape. Use "properties", "required",
+      "type", "enum", "pattern" — the standard JSON Schema
+      vocabulary.
+
+  output_schema:
+    type: object
+    required: false
+    description: |
+      JSON Schema for the gear's output. Aids the model's reasoning
+      about the result. Recommended even when permissive (e.g.
+      {"type": "object"} is fine for a free-form response).
+
+  permissions:
+    type: object
+    required: true
+    fields:
+      network:
+        type: array
+        required: true
+        items:
+          type: object
+          fields:
+            host:
+              type: string
+              required: true
+              description: |
+                Exact hostname the gear may call. Compared by
+                equality against the URL's host at runtime.
+                Wildcards not supported in v1.
+            port:
+              type: integer
+              required: true
+              description: TCP port, typically 443 for HTTPS.
+      timeout_seconds:
+        type: integer
+        required: true
+        min: 1
+        max_default: 60
+        description: |
+          Per-call timeout. Engine maximum is configurable;
+          declarations over the engine maximum are rejected at load.
+      max_calls_per_minute:
+        type: integer
+        required: false
+        description: |
+          Optional per-user rate limit for the gear. Enforced by
+          the engine when present.
+
+  external_workflow:
+    type: object
+    required_when:
+      tier: webhook
+    forbidden_when:
+      tier: http
+    fields:
+      platform:
+        type: string
+        required: true
+        description: |
+          Name of the workflow platform the webhook hits (e.g.
+          "zapier", "n8n", "make"). Surfaced in the admin UI
+          and the model-facing description.
+      workflow_id:
+        type: string
+        required: false
+        description: |
+          Optional identifier for the specific workflow on the
+          platform. Helps operators reason about which workflow
+          the gear belongs to.
+
+# Examples — minimal working declarations in each tier. See the
+# examples/ directory for richer per-service patterns.
+
+examples:
+
+  minimal_http_gear:
+    cog_gear: v1
+    tier: http
+    name: echo_status
+    description: |
+      Echo the HTTP status of a fetch to httpbin.org/status/{code}.
+      Used to demonstrate the minimal Tier 1 shape.
+    endpoint:
+      method: GET
+      url: "https://httpbin.org/status/{{ .code }}"
+    input_schema:
+      type: object
+      required: [code]
+      properties:
+        code: { type: integer, minimum: 100, maximum: 599 }
+    output_schema:
+      type: object
+    permissions:
+      network:
+        - host: httpbin.org
+          port: 443
+      timeout_seconds: 5
+
+  minimal_webhook_gear:
+    cog_gear: v1
+    tier: webhook
+    name: trigger_zap_email
+    description: |
+      Fire a Zapier webhook that sends a welcome email. The
+      external_workflow block declares the platform; the operator
+      must explicitly opt into webhook gears.
+    endpoint:
+      method: POST
+      url: "https://hooks.zapier.com/hooks/catch/${secret:ZAP_HOOK_ID}/"
+      body:
+        email: "{{ .recipient }}"
+        name: "{{ .name }}"
+    input_schema:
+      type: object
+      required: [recipient]
+      properties:
+        recipient: { type: string, format: email }
+        name: { type: string }
+    permissions:
+      network:
+        - host: hooks.zapier.com
+          port: 443
+      timeout_seconds: 10
+    external_workflow:
+      platform: zapier
