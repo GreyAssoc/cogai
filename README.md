@@ -1,163 +1,112 @@
-# cogai — Cog Public Gear Schema & SDK
+# cog — public distribution
 
-> Public artefacts for authoring **declarative gears** that run on
-> Cog (the AI agent runtime). Cog itself is closed-source proprietary
-> software; the *contract* by which third-party gears are submitted
-> and validated is published here so anyone can author a gear without
-> needing access to the engine source.
+> Cog is a Go-native AI agent system you run yourself. This is the
+> public distribution surface: README, install instructions, the
+> public gear-authoring contract, and a [Releases page](https://github.com/GreyAssoc/cogai/releases)
+> hosting the compiled binaries.
 >
-> This repository is permissively licensed (MIT) because nothing here
-> is commercially load-bearing. The runtime that *interprets* gears
-> against the contract is the proprietary part.
+> The source lives in a private dev repo; you don't need it to run
+> cog Free.
 
 ---
 
-## What this repo contains
+## What cog gives you
 
-| Path | Purpose |
-|---|---|
-| `cog_gear.v1.schema.yaml` | Canonical meta-schema for the `cog_gear: v1` declaration format, in YAML for readability. |
-| `cog_gear.v1.schema.json` | The same meta-schema as JSON Schema — used by editor extensions (VS Code YAML, IntelliJ) to provide completion and inline validation. |
-| `cog-gear-lint/` | A Go-based CLI that validates a gear declaration against the schema. Run before submitting; CI integrators run it on PRs. |
-| `examples/` | Reference gear declarations for Notion, Stripe, GitHub, Linear. Copy + adapt. |
-| `docs/AUTHORING.md` | How to write a Tier 1 (HTTP) or Tier 2 (webhook) gear from scratch. |
-| `LICENSE` | MIT. |
+A production-grade AI agent system that runs on your hardware:
 
----
+- **7 model providers** — Anthropic, OpenAI, Google Gemini, DeepSeek,
+  xAI, Qwen, Moonshot. BYO keys; switch per-message.
+- **Persistent memory** — pgvector-backed facts that survive
+  restarts. Cross-session, cross-project. Always free.
+- **Typed tools (gears)** — file I/O, git, build, test, shell, web
+  fetch, `.docx` / `.xlsx` / `.pdf` / `.pptx` read+write, Google
+  Workspace, calendar, math. ~30 built-in.
+- **33 built-in agents** — `cog-coder` (15 languages, flagship),
+  plus `general` / `researcher` / `writer` / `planner`, plus 28
+  single-perspective code-review specialists.
+- **Telegram + Discord** — both channels ship in Free.
+- **Audit-friendly** — every turn is a typed Postgres row (cost,
+  provider, model, tokens, failure-class as columns). Query with
+  Metabase / Looker / `psql`.
 
-## What gears are
+## Install (~5 minutes)
 
-A **gear** is a typed tool that the cog agent loop can dispatch.
-Some gears are compiled into the cog binary (Tier 0); others are
-declared in YAML and loaded at runtime (Tier 1 and Tier 2). The
-declarative tiers are what this repo enables.
+1. Grab the installer for your platform from
+   [Releases](https://github.com/GreyAssoc/cogai/releases):
 
-| Tier | Authoring | Envelope (what the gear may do) |
+   | Platform | File |
+   |---|---|
+   | Windows (Intel / AMD) | `cog-installer-windows-amd64.zip` |
+   | macOS (Intel) | `cog-installer-darwin-amd64.tar.gz` |
+   | macOS (Apple Silicon) | `cog-installer-darwin-arm64.tar.gz` |
+   | Linux (Intel / AMD) | `cog-installer-linux-amd64.tar.gz` |
+   | Linux (ARM, e.g. Raspberry Pi 4) | `cog-installer-linux-arm64.tar.gz` |
+
+2. Extract; double-click the launcher (`Install Cog.command`,
+   `install-cog.sh`, or `install-cog.bat`).
+3. Have to hand: a Telegram bot token (and/or a Discord bot token),
+   an API key for at least one model provider, your email.
+4. When the installer reports `✓ cog is running.`, open Telegram /
+   Discord and message your bot `/help`.
+
+For a guided walk-through covering the Telegram and Discord bot
+setup steps, see [`DEPLOY.md`](https://github.com/GreyAssoc/cogai/blob/main/DEPLOY.md).
+
+## Tiers
+
+| Tier | Status | Pitch |
 |---|---|---|
-| **0 — Native** | Go source, compiled into the cog binary | Anything: file I/O, subprocess, network, custom permissions |
-| **1 — Declared HTTP** | YAML/JSON, loaded at startup | Network to one or more declared hosts; **no** subprocess; **no** file I/O |
-| **2 — Declared Webhook** | YAML/JSON with `external_workflow:` admission | Same as Tier 1, plus visible degradation indicating the gear may transit Zapier/n8n/Make-style platforms |
+| **Free** | **shipping** | 1 seat, real coding agent, 3 custom gears, 3 custom agents, Telegram + Discord, 30-day trace retention. **Persistent memory always free.** |
+| Pro | planned | Council, orchestrator, agent teams, unlimited custom gears/agents, web chat + HTTP API + IDE/CLI host, WhatsApp, 365-day retention. |
+| Family | planned | 4 seats with parent-controlled spend caps + audit. |
+| Teams | planned | Multi-user admin plane, OIDC SSO, per-user policy mutation, on-prem connector. |
 
-This repo's schema covers Tiers 1 and 2 — what you can author
-yourself without filing a feature request against the cog engine.
+Full tier-vs-feature matrix at [cog.ai/pricing](https://cog.ai/pricing).
+Pricing for paid tiers is deliberately deferred until Free has
+shipped and we have real signal.
 
----
+## Authoring declarative gears
 
-## Quick start
+Cog runs your custom HTTP-backed gears as **Tier 1 declarative
+gears** — YAML or JSON declarations that the engine loads at
+runtime and dispatches with the same permission gates as compiled
+gears.
 
-### Write a gear
+- [`cog_gear.v1.schema.yaml`](./cog_gear.v1.schema.yaml) — canonical
+  meta-schema (YAML for readability).
+- [`cog_gear.v1.schema.json`](./cog_gear.v1.schema.json) — JSON
+  Schema for editor integration (VS Code YAML extension, IntelliJ).
+- [`AUTHORING.md`](./AUTHORING.md) — Tier 1 (HTTP) and Tier 2
+  (webhook) authoring guide.
+- [`examples/`](./examples/) — reference gear declarations: Notion,
+  Stripe, GitHub, Linear.
 
-```yaml
-# my_notion_gear.yaml
-cog_gear: v1
-tier: http
-name: notion_create_page
-description: Create a new Notion page in a known database.
-endpoint:
-  method: POST
-  url: "https://api.notion.com/v1/pages"
-  headers:
-    Authorization: "Bearer ${secret:NOTION_TOKEN}"
-    Notion-Version: "2022-06-28"
-    Content-Type: application/json
-  body:
-    parent: { database_id: "{{ .database_id }}" }
-    properties:
-      Name:
-        title:
-          - { text: { content: "{{ .title }}" } }
-input_schema:
-  type: object
-  required: [database_id, title]
-  properties:
-    database_id: { type: string }
-    title: { type: string }
-output_schema:
-  type: object
-permissions:
-  network:
-    - host: api.notion.com
-      port: 443
-  timeout_seconds: 15
-```
-
-### Validate it
+To validate a declaration before submitting it, download the
+`cog-gear-lint` binary for your platform from
+[Releases](https://github.com/GreyAssoc/cogai/releases) and run it
+against your file:
 
 ```bash
-cog-gear-lint my_notion_gear.yaml
-# OK: declaration matches cog_gear: v1 schema
+cog-gear-lint my_gear.yaml
+# OK: my_gear.yaml
 ```
-
-### Submit it
-
-Submit a PR to your cog deployment's gear catalogue (each deployment
-manages its own — there is no central "cog catalogue"). The cog
-host registers the gear on the next restart or admin-UI reload.
-
----
-
-## The principle
-
-The validator in this repo enforces **exactly** the same envelope
-the closed-source cog engine enforces at load time. If `cog-gear-lint`
-says your gear is valid, cog will load it. If they ever drift,
-that's a bug — file an issue.
-
-The Tier envelope rules:
-
-- **Tier 1 (`tier: http`)**: required `network`; `timeout_seconds`
-  capped at engine maximum (default 60s); `subprocess: true` rejected;
-  `file_read` or `file_write` non-empty rejected.
-- **Tier 2 (`tier: webhook`)**: same envelope as Tier 1, plus required
-  `external_workflow:` block declaring the workflow platform.
-
-Operators may further restrict (per-user `allowed_gear_tiers` in cog
-policy). The validator's job is the lower bound: "would this even
-load?" Whether the operator has *granted* the tier to the user is a
-runtime question this repo doesn't answer.
-
----
-
-## What's NOT here
-
-- The cog engine source. Closed-source proprietary — see
-  [TIERS.md](https://cog.ai/docs/tiers) and the cog distribution.
-- The Tier 0 gear catalogue. Native gears (bash, fetch, file ops,
-  git, build/test, office_read/write, etc.) ship inside the engine.
-- Runtime policy enforcement. Even if your gear is schema-valid,
-  whether a given user may invoke it depends on the operator's
-  policy and the user's licence tier.
-
----
-
-## Contributing
-
-PRs welcome for:
-- Example gears (one PR per service).
-- `cog-gear-lint` bug fixes.
-- Documentation improvements.
-
-For changes to the schema itself — the meta-schema is versioned
-(`cog_gear: v1`). Breaking changes ship as `v2`; the cog engine
-maintains parser support for both during a transition window.
-
----
 
 ## License
 
-MIT — see [`LICENSE`](./LICENSE).
+Closed-source proprietary. See [LICENSE](./LICENSE).
 
-The MIT licence applies to:
-- The schema files (`cog_gear.v1.schema.{yaml,json}`).
-- The `cog-gear-lint` validator.
-- The example gear declarations.
-- The authoring documentation.
+The Free tier is perpetual, single-seat, BYO-keys; no licence file
+or signup required. Paid tiers (Pro / Family / Teams) require an
+Ed25519-signed licence file issued on subscription.
 
-It does **not** extend to the cog engine itself, which is governed
-by the proprietary licence at
-[github.com/GreyAssoc/cog/LICENSE](https://github.com/GreyAssoc/cog/blob/main/LICENSE).
+The schema files (`cog_gear.v1.schema.{yaml,json}`) and the example
+gear declarations are published as the public contract for
+Tier 1 / Tier 2 gear authoring. They may be referenced and used by
+third-party editor extensions, validators, and authoring tools
+under the same terms as the rest of cog.
 
 ---
 
-**Maintained by:** Grey & Associates Ltd
-**Contact:** gears@cog.ai
+**Issues & support:** [github.com/GreyAssoc/cogai/issues](https://github.com/GreyAssoc/cogai/issues) · support@cog.ai
+**Domain:** [cog.ai](https://cog.ai)
+**Contact:** Steve Whitehead — steve.w@greyandassociates.co.uk

@@ -338,12 +338,12 @@ For Tier 1, prefer the first. Model agents handle iterative calls.
 
 Each cog deployment manages its own gear catalogue. Submit a PR to
 your operator's gear repo or admin UI (varies by deployment); do
-not submit to the cogai public repo — that holds the schema, not a
-central catalogue.
+not submit to this public repo — it holds the published schema and
+reference examples, not a central catalogue.
 
-The cogai repo accepts PRs for new examples (one PR per service)
-under `examples/`. These are reference; they aren't enabled by
-default in any deployment.
+Issues against the schema, the `cog-gear-lint` validator binary,
+or this authoring guide are welcome via
+[github.com/GreyAssoc/cogai/issues](https://github.com/GreyAssoc/cogai/issues).
 
 ---
 

@@ -1,29 +1,82 @@
-MIT License
+COG SOFTWARE LICENCE
+====================
 
-Copyright (c) 2026 Grey & Associates Ltd
+Copyright (c) 2026 Grey & Associates Ltd. All rights reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+This file replaces the MIT licence under which prior revisions of
+Cog were distributed. The historical MIT notice is preserved at
+docs/LEGACY_MIT_NOTICE.md and continues to apply to those prior
+revisions; it does not extend to this revision or any subsequent
+revision.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+NOTICE
+------
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+This software ("Cog") is proprietary to Grey & Associates Ltd.
+Use, reproduction, modification, or distribution of Cog requires a
+valid licence issued by Grey & Associates Ltd. The four published
+licence types are:
 
----
+  free      Perpetual, single-seat, BYO-keys. No licence file
+            required — the binary defaults to Free in absence of
+            a paid licence. Subject to the terms at
+            https://cog.ai/terms/free.
+  pro       Single-seat paid licence. Issued upon active
+            subscription. Terms at https://cog.ai/terms/pro.
+  family    Up to four seats with parental administration. Terms
+            at https://cog.ai/terms/family.
+  teams     Multi-seat commercial licence. Terms at
+            https://cog.ai/terms/teams.
+  dev       30-day loopback-only developer licence. Minted with
+            `cog license dev`. For evaluation and local development
+            only.
 
-This MIT licence covers the schema files, the cog-gear-lint validator,
-the example gear declarations, and the authoring documentation in this
-repository. It does NOT extend to the cog engine itself, which is closed-
-source proprietary software governed by a separate licence at
-https://github.com/GreyAssoc/cog/blob/main/LICENSE.
+RESTRICTIONS
+------------
+
+Without prior written consent from Grey & Associates Ltd, you may
+NOT:
+
+  - Distribute, publish, sublicence, sell, lease, or transfer Cog
+    or any derivative work.
+  - Reverse engineer, decompile, disassemble, or otherwise attempt
+    to derive the source code from a compiled binary, except to the
+    extent applicable law expressly permits.
+  - Use Cog to develop, market, or operate a competing product or
+    service.
+  - Remove, alter, or obscure any proprietary notice, label, or
+    licence enforcement mechanism.
+  - Use Cog beyond the scope authorised by the licence type you
+    hold.
+
+The public gear schema, the cog-gear-lint validator, and the
+authoring documentation at https://github.com/GreyAssoc/cogai are
+distributed under a separate permissive licence and are not
+governed by this notice.
+
+DISCLAIMER OF WARRANTY
+----------------------
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
+NON-INFRINGEMENT. IN NO EVENT SHALL THE COPYRIGHT HOLDERS BE LIABLE
+FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+CONTRACT, TORT, OR OTHERWISE, ARISING FROM OR IN CONNECTION WITH
+THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+CONTACT
+-------
+
+Licensing:  licensing@cog.ai
+Support:    support@cog.ai
+Commercial: sales@cog.ai
+
+NOTE TO READER
+--------------
+
+This licence text is a placeholder pending formal legal review.
+Grey & Associates Ltd reserves the right to revise the wording and
+the referenced terms URLs before first commercial issuance. The
+substance of the restrictions, the four-licence-type structure, and
+the disclaimer above are the intended commercial posture.
