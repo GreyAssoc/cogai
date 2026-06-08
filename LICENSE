@@ -20,13 +20,13 @@ licence types are:
   free      Perpetual, single-seat, BYO-keys. No licence file
             required — the binary defaults to Free in absence of
             a paid licence. Subject to the terms at
-            https://cog.ai/terms/free.
+            https://getcog.ai/terms/free.
   pro       Single-seat paid licence. Issued upon active
-            subscription. Terms at https://cog.ai/terms/pro.
+            subscription. Terms at https://getcog.ai/terms/pro.
   family    Up to four seats with parental administration. Terms
-            at https://cog.ai/terms/family.
+            at https://getcog.ai/terms/family.
   teams     Multi-seat commercial licence. Terms at
-            https://cog.ai/terms/teams.
+            https://getcog.ai/terms/teams.
   dev       30-day loopback-only developer licence. Minted with
             `cog license dev`. For evaluation and local development
             only.
@@ -68,9 +68,9 @@ THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 CONTACT
 -------
 
-Licensing:  licensing@cog.ai
-Support:    support@cog.ai
-Commercial: sales@cog.ai
+Licensing:  licensing@getcog.ai
+Support:    support@getcog.ai
+Commercial: sales@getcog.ai
 
 NOTE TO READER
 --------------

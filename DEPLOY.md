@@ -389,7 +389,7 @@ Free-tier single-operator deployments don't need most of this.
 | The built-in agent inventory | [AGENTS.md](./AGENTS.md) |
 | Production runbook | [docs/runbook.md](./docs/runbook.md) |
 | To author a Tier 1 / Tier 2 declarative gear | [github.com/GreyAssoc/cogai](https://github.com/GreyAssoc/cogai) |
-| Open a support request | support@cog.ai |
+| Open a support request | support@getcog.ai |
 
 ---
 

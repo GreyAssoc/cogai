@@ -61,7 +61,7 @@ setup steps, see [`DEPLOY.md`](https://github.com/GreyAssoc/cogai/blob/main/DEPL
 | Family | planned | 4 seats with parent-controlled spend caps + audit. |
 | Teams | planned | Multi-user admin plane, OIDC SSO, per-user policy mutation, on-prem connector. |
 
-Full tier-vs-feature matrix at [cog.ai/pricing](https://cog.ai/pricing).
+Full tier-vs-feature matrix at [getcog.ai/pricing](https://getcog.ai/pricing).
 Pricing for paid tiers is deliberately deferred until Free has
 shipped and we have real signal.
 
@@ -107,6 +107,6 @@ under the same terms as the rest of cog.
 
 ---
 
-**Issues & support:** [github.com/GreyAssoc/cogai/issues](https://github.com/GreyAssoc/cogai/issues) · support@cog.ai
-**Domain:** [cog.ai](https://cog.ai)
+**Issues & support:** [github.com/GreyAssoc/cogai/issues](https://github.com/GreyAssoc/cogai/issues) · support@getcog.ai
+**Domain:** [getcog.ai](https://getcog.ai)
 **Contact:** Steve Whitehead — steve.w@greyandassociates.co.uk
