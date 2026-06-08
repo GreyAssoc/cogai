@@ -1,82 +1,431 @@
-COG SOFTWARE LICENCE
-====================
+COG END USER LICENCE AGREEMENT (EULA)
+=====================================
 
-Copyright (c) 2026 Grey & Associates Ltd. All rights reserved.
+Version: 0.2-draft (2026-06-08)
+Status:  DRAFT pending review by qualified legal counsel.
+         Do not rely on this document as a final agreement. It is
+         intended as a starting point for solicitor review.
 
-This file replaces the MIT licence under which prior revisions of
-Cog were distributed. The historical MIT notice is preserved at
-docs/LEGACY_MIT_NOTICE.md and continues to apply to those prior
-revisions; it does not extend to this revision or any subsequent
-revision.
+Copyright (c) 2026 Grey & Associates Ltd ("Licensor"). All rights
+reserved.
 
-NOTICE
-------
+This document is the End User Licence Agreement for the Cog
+software product ("Cog"). It governs your use of the Cog binary
+installed on hardware you control. Use of any hosted services
+operated by the Licensor at getcog.ai (or any subdomain thereof)
+is governed by the separate Terms of Service published at
+https://getcog.ai/terms-of-service, not by this EULA.
 
-This software ("Cog") is proprietary to Grey & Associates Ltd.
-Use, reproduction, modification, or distribution of Cog requires a
-valid licence issued by Grey & Associates Ltd. The four published
-licence types are:
+This document supersedes any previous LICENCE file shipped with
+Cog. Prior MIT-licensed revisions of the Cog source remain
+governed by the historical notice at docs/LEGACY_MIT_NOTICE.md and
+continue to apply to those revisions; that grant does not extend
+to this or any subsequent revision.
 
-  free      Perpetual, single-seat, BYO-keys. No licence file
-            required — the binary defaults to Free in absence of
-            a paid licence. Subject to the terms at
-            https://getcog.ai/terms/free.
-  pro       Single-seat paid licence. Issued upon active
-            subscription. Terms at https://getcog.ai/terms/pro.
-  family    Up to four seats with parental administration. Terms
-            at https://getcog.ai/terms/family.
-  teams     Multi-seat commercial licence. Terms at
-            https://getcog.ai/terms/teams.
-  dev       30-day loopback-only developer licence. Minted with
-            `cog license dev`. For evaluation and local development
-            only.
 
-RESTRICTIONS
-------------
+1. DEFINITIONS
+--------------
 
-Without prior written consent from Grey & Associates Ltd, you may
-NOT:
+  "Cog" means the executable binary distributed by the Licensor
+  under the name Cog, together with any libraries, schemas,
+  configuration files, scripts, and documentation provided
+  alongside it.
 
-  - Distribute, publish, sublicence, sell, lease, or transfer Cog
-    or any derivative work.
-  - Reverse engineer, decompile, disassemble, or otherwise attempt
-    to derive the source code from a compiled binary, except to the
-    extent applicable law expressly permits.
-  - Use Cog to develop, market, or operate a competing product or
-    service.
-  - Remove, alter, or obscure any proprietary notice, label, or
-    licence enforcement mechanism.
-  - Use Cog beyond the scope authorised by the licence type you
-    hold.
+  "You" or "Licensee" means the individual or legal entity
+  exercising the rights granted under this EULA. Where you are an
+  individual acting on behalf of an organisation, "you" includes
+  that organisation and you warrant that you are authorised to
+  bind it.
 
-The public gear schema, the cog-gear-lint validator, and the
-authoring documentation at https://github.com/GreyAssoc/cogai are
-distributed under a separate permissive licence and are not
-governed by this notice.
+  "Licence" means the rights granted under this EULA.
 
-DISCLAIMER OF WARRANTY
+  "Tier" means one of the four product tiers Cog ships in: Free,
+  Pro, Family, and Teams. Each Tier has distinct usage scope
+  defined in Schedule A.
+
+  "Licence File" means the Ed25519-signed file issued by the
+  Licensor that authorises operation of the Cog binary at a Tier
+  other than Free.
+
+  "Seat" means one authenticated user account permitted by a
+  Tier's seat count.
+
+
+2. GRANT OF LICENCE
+-------------------
+
+  2.1  Free Tier (perpetual). Subject to the restrictions in
+       section 3, the Licensor grants you a perpetual,
+       non-exclusive, non-transferable, single-Seat, royalty-free
+       Licence to install and operate Cog on hardware you control,
+       provided that no Licence File is present at startup. Running
+       Cog in this configuration constitutes acceptance of the
+       Free Tier terms in Schedule A.
+
+  2.2  Paid Tiers (Pro, Family, Teams). Subject to a valid Licence
+       File issued by the Licensor and ongoing payment of the
+       applicable subscription fees, the Licensor grants you a
+       non-exclusive, non-transferable, time-limited Licence to
+       install and operate Cog at the corresponding Tier on
+       hardware you control. The Licence terminates automatically
+       upon expiry of the Licence File or non-payment of fees,
+       whereupon the binary continues to operate under the Free
+       Tier (subject to section 2.1).
+
+  2.3  Developer / Internal Tier. The "dev" Licence type is a
+       30-day loopback-only Licence intended exclusively for
+       internal evaluation. It is not valid for production
+       deployment and the binary will refuse to bind a non-
+       loopback address while operating under it.
+
+  2.4  Updates and upgrades. Where you hold a paid-Tier Licence,
+       the Licensor may make updates available to you at no
+       additional cost. Updates are part of Cog and subject to
+       this EULA. The Licensor has no obligation to provide
+       updates and no obligation to maintain backwards
+       compatibility with prior versions.
+
+
+3. RESTRICTIONS
+---------------
+
+  Without the prior written consent of the Licensor, you may NOT:
+
+  3.1  Distribute, publish, sublicence, sell, lease, rent, lend,
+       or otherwise transfer Cog or any portion thereof to any
+       third party;
+
+  3.2  Reverse engineer, decompile, disassemble, or otherwise
+       attempt to derive the source code, algorithms, or trade
+       secrets of Cog, except (a) to the limited extent expressly
+       permitted by the Software Directive (Directive 2009/24/EC)
+       and the Copyright, Designs and Patents Act 1988 for
+       interoperability purposes, or (b) where such restriction
+       is otherwise prohibited by mandatory applicable law;
+
+  3.3  Use Cog to develop, market, operate, or assist any third
+       party in developing, marketing, or operating a product or
+       service that competes with Cog as defined in section 8
+       (Trademark and Competing Use);
+
+  3.4  Remove, alter, obscure, or interfere with any copyright,
+       trademark, licence, or other proprietary notice, label, or
+       Licence enforcement mechanism present in Cog;
+
+  3.5  Use Cog beyond the scope authorised by the Tier you hold,
+       including but not limited to exceeding the permitted Seat
+       count, custom-gear quota, custom-agent quota, or
+       communication-channel set defined in Schedule A;
+
+  3.6  Use Cog in any application or environment requiring
+       fail-safe performance or where failure could lead to
+       death, personal injury, or environmental damage, including
+       but not limited to operation of nuclear facilities, life
+       support systems, or air traffic control;
+
+  3.7  Use Cog in violation of applicable export-control laws,
+       sanctions regimes (including but not limited to those
+       administered by HM Treasury, OFAC, the EU, and the United
+       Nations), or other applicable law.
+
+
+4. PROVIDER KEYS AND THIRD-PARTY COSTS
+--------------------------------------
+
+  Cog is a BYO-key system. You contract directly with model
+  providers (such as Anthropic, OpenAI, Google, DeepSeek, xAI,
+  Qwen, Moonshot, or others) and you are solely responsible for
+  all costs incurred against your provider accounts. The
+  Licensor is not a party to your relationship with any model
+  provider and has no liability for charges, suspensions, rate
+  limits, or other actions taken by such providers in respect of
+  your account.
+
+  Cog's cost-telemetry feature is a best-effort estimate. The
+  authoritative source of charges is each provider's own
+  invoicing.
+
+
+5. PAID-TIER LICENCE FILES
+--------------------------
+
+  5.1  Issuance. Paid-Tier Licence Files are issued by the
+       Licensor following completion of the corresponding
+       subscription process. Issuance details (delivery method,
+       bound metadata) are described in the Terms of Service.
+
+  5.2  Verification. Licence verification is performed locally
+       against an embedded public key. Cog does not transmit
+       Licence data to the Licensor or any third party. The
+       Licensor has no telemetry on Cog's operation under any
+       Tier.
+
+  5.3  Expiry. Paid-Tier Licence Files carry an expiry timestamp.
+       Cog issues a soft-warning beginning 30 days before
+       expiry. Upon expiry, paid-Tier features become unavailable
+       and Cog falls back to Free Tier operation per section 2.2.
+
+  5.4  No phone-home. Air-gapped operation is supported at every
+       Tier.
+
+
+6. WARRANTY DISCLAIMER
 ----------------------
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
-NON-INFRINGEMENT. IN NO EVENT SHALL THE COPYRIGHT HOLDERS BE LIABLE
-FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF
-CONTRACT, TORT, OR OTHERWISE, ARISING FROM OR IN CONNECTION WITH
-THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, COG IS
+  PROVIDED "AS IS" AND "AS AVAILABLE," WITHOUT WARRANTY OF ANY
+  KIND, EXPRESS, IMPLIED, OR STATUTORY, INCLUDING BUT NOT LIMITED
+  TO THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+  PARTICULAR PURPOSE, NON-INFRINGEMENT, AND ABSENCE OF DEFECTS.
+
+  The Licensor does not warrant that Cog will be uninterrupted,
+  error-free, secure against intrusion, or that defects will be
+  corrected. The Licensor does not warrant that Cog's output is
+  accurate, complete, reliable, or fit for any particular
+  purpose; Cog dispatches to third-party model providers whose
+  output is outside the Licensor's control.
+
+  Nothing in this section limits or excludes any warranty,
+  guarantee, or other right that cannot be limited or excluded
+  under applicable law, including statutory rights of consumers
+  under the UK Consumer Rights Act 2015.
+
+
+7. LIMITATION OF LIABILITY
+--------------------------
+
+  7.1  Excluded losses. TO THE MAXIMUM EXTENT PERMITTED BY
+       APPLICABLE LAW, IN NO EVENT SHALL THE LICENSOR BE LIABLE
+       FOR ANY INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+       CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR FOR LOSS OF
+       PROFITS, REVENUE, GOODWILL, DATA, OR ANTICIPATED SAVINGS,
+       ARISING OUT OF OR RELATED TO YOUR USE OF OR INABILITY TO
+       USE COG, EVEN IF THE LICENSOR HAS BEEN ADVISED OF THE
+       POSSIBILITY OF SUCH DAMAGES.
+
+  7.2  Cap on direct damages. The aggregate liability of the
+       Licensor arising out of or relating to this EULA, whether
+       in contract, tort, or otherwise, shall not exceed:
+       (a) for the Free Tier, £100 (one hundred pounds sterling);
+       (b) for paid Tiers, the total subscription fees paid by
+       you to the Licensor in the twelve (12) months immediately
+       preceding the event giving rise to the claim.
+
+  7.3  Carve-outs. Nothing in this section limits or excludes
+       liability for: (a) death or personal injury caused by the
+       Licensor's negligence; (b) fraud or fraudulent
+       misrepresentation; (c) any other liability that cannot be
+       limited or excluded under applicable law.
+
+
+8. TRADEMARK AND COMPETING USE
+------------------------------
+
+  8.1  Trademarks. "Cog," the Cog logo, and any other names,
+       marks, and brand elements used in connection with Cog are
+       trademarks of the Licensor. This EULA does not grant you
+       any right to use those marks except as required for fair
+       descriptive use under applicable law.
+
+  8.2  Compatible gear authoring. Notwithstanding section 3.3,
+       you may publish, distribute, and identify gear declarations,
+       editor extensions, validators, and similar third-party
+       tools as "compatible with Cog" or equivalent factual
+       descriptive language, provided that:
+       (a) such use is truthful and not misleading;
+       (b) such use does not imply endorsement, sponsorship, or
+       affiliation with the Licensor; and
+       (c) such use does not incorporate the Cog logo or other
+       design marks without prior written consent.
+
+  8.3  Competing use. "Competing product or service" in
+       section 3.3 means a product or service that performs
+       substantially the same function as Cog (operating an AI
+       agent loop with typed in-process tool dispatch and a
+       Postgres-backed trace store) and is offered to third
+       parties in commerce. Authoring gear declarations against
+       the public schema published at
+       https://github.com/GreyAssoc/cogai is not a competing use.
+
+
+9. INTELLECTUAL PROPERTY
+------------------------
+
+  All title, ownership rights, and intellectual property rights
+  in and to Cog, including all copies and derivative works of
+  Cog, remain with the Licensor and its licensors. This EULA
+  grants you no ownership rights in or to Cog. Where you create
+  custom gears, agents, or configurations through Cog, the
+  Licensor claims no ownership of those work-products; you
+  retain ownership subject to the Licensor's underlying rights
+  in Cog.
+
+
+10. CONFIDENTIALITY (PAID TIERS)
+--------------------------------
+
+  Paid-Tier Licence Files and any associated Licence-issuance
+  metadata are confidential information of the Licensor. You
+  agree to protect such information with at least the same
+  degree of care that you use to protect your own confidential
+  information of similar importance, but in no event less than
+  reasonable care, and not to disclose it to any third party
+  except as required by applicable law.
+
+
+11. TERM AND TERMINATION
+------------------------
+
+  11.1 Term. The Free-Tier Licence is perpetual subject to
+       sections 3 and 11.2. Paid-Tier Licences are co-terminus
+       with the corresponding subscription period.
+
+  11.2 Termination for breach. The Licensor may terminate this
+       EULA upon written notice if you materially breach it and
+       (where the breach is curable) fail to cure the breach
+       within thirty (30) days after receipt of notice
+       describing the breach.
+
+  11.3 Effect of termination. Upon termination, all rights
+       granted under this EULA cease and you must cease all use
+       of Cog and destroy all copies of Cog in your possession or
+       control. Sections 6, 7, 8.1, 9, 10, 12, 13, and 14
+       survive termination.
+
+
+12. EXPORT CONTROLS AND SANCTIONS
+---------------------------------
+
+  You acknowledge that Cog may be subject to export-control laws
+  and economic sanctions regimes. You agree not to install,
+  export, re-export, transfer, or use Cog in any manner that
+  violates such laws, including but not limited to (a) export
+  to any country, person, or entity subject to comprehensive
+  sanctions administered by HM Treasury, OFAC, the EU, or the
+  United Nations, or (b) use by any person or entity on a
+  denied-party list.
+
+
+13. GOVERNING LAW AND JURISDICTION
+----------------------------------
+
+  This EULA is governed by and construed in accordance with the
+  laws of England and Wales, without regard to conflict-of-laws
+  principles. The courts of England and Wales shall have
+  exclusive jurisdiction to settle any dispute or claim arising
+  out of or in connection with this EULA, save that the Licensor
+  may bring proceedings against you in any jurisdiction where
+  you operate or are domiciled to enforce or protect its
+  intellectual property rights.
+
+
+14. GENERAL
+-----------
+
+  14.1 Entire agreement. This EULA, together with any Licence
+       File and (where applicable) the Terms of Service,
+       constitutes the entire agreement between you and the
+       Licensor regarding Cog and supersedes all prior or
+       contemporaneous agreements, representations, warranties,
+       and understandings.
+
+  14.2 Severability. If any provision of this EULA is held to
+       be unenforceable, the remaining provisions remain in
+       full force and the unenforceable provision shall be
+       construed to give the maximum effect permitted by law.
+
+  14.3 Waiver. No failure or delay by the Licensor in exercising
+       any right shall operate as a waiver of that right.
+
+  14.4 Assignment. You may not assign this EULA without the
+       Licensor's prior written consent. The Licensor may
+       assign this EULA without restriction.
+
+  14.5 Force majeure. Neither party is liable for any failure
+       or delay in performance to the extent caused by
+       circumstances beyond its reasonable control.
+
+  14.6 Notices. Notices to the Licensor shall be sent to
+       legal@getcog.ai. Notices to you may be given by email
+       to any address you have provided to the Licensor or by
+       posting to https://getcog.ai/notices.
+
+  14.7 No third-party beneficiaries. A person who is not a
+       party to this EULA has no rights under the Contracts
+       (Rights of Third Parties) Act 1999 to enforce any term.
+
+  14.8 Amendment. The Licensor may amend this EULA from time
+       to time. Continued use of Cog after the effective date
+       of any amendment constitutes acceptance of the amended
+       EULA. Material changes affecting paid-Tier rights will
+       not take effect for existing paid-Tier subscribers until
+       their current subscription period ends.
+
+
+SCHEDULE A — TIER MATRIX
+========================
+
+The Tier-specific entitlements are defined in the canonical Tier
+specification at TIERS.md, which forms part of this EULA. The
+matrix below is a summary; in case of conflict between this
+summary and TIERS.md, TIERS.md governs.
+
+  Free Tier
+    Seats:                1
+    Custom gears:         3 above Tier 0 baseline
+    Custom agents:        3 beyond built-ins
+    Communication:        Telegram + Discord
+    Trace retention:      30 days
+    Licence:              No licence file required
+    Subscription:         None
+
+  Pro Tier
+    Seats:                1
+    Custom gears:         Unlimited
+    Custom agents:        Unlimited
+    Communication:        Telegram + Discord + WhatsApp +
+                          web chat + HTTP API + IDE/CLI
+    Trace retention:      365 days
+    Licence:              Required
+    Subscription:         Required
+
+  Family Tier
+    Seats:                Up to 4 (1 parent + 3 children)
+    Custom gears:         3 per Seat (12 total)
+    Custom agents:        3 per Seat
+    Communication:        Telegram + Discord + WhatsApp + web chat
+    Trace retention:      365 days
+    Licence:              Required
+    Subscription:         Required
+
+  Teams Tier
+    Seats:                Unlimited
+    Custom gears:         Unlimited
+    Custom agents:        Unlimited
+    Communication:        All + on-prem connector
+    Trace retention:      Configurable
+    Licence:              Required, bound to organisation and
+                          Seat count
+    Subscription:         Required
+
+The "dev" Licence is documented separately and is not a
+commercial Tier.
+
 
 CONTACT
 -------
 
-Licensing:  licensing@getcog.ai
-Support:    support@getcog.ai
-Commercial: sales@getcog.ai
+  Licensing questions: licensing@getcog.ai
+  Support:             support@getcog.ai
+  Commercial / sales:  sales@getcog.ai
+  Security reports:    security@getcog.ai
+  Legal notices:       legal@getcog.ai
 
-NOTE TO READER
---------------
+  Postal address:      [TO BE INSERTED BY LICENSOR]
 
-This licence text is a placeholder pending formal legal review.
-Grey & Associates Ltd reserves the right to revise the wording and
-the referenced terms URLs before first commercial issuance. The
-substance of the restrictions, the four-licence-type structure, and
-the disclaimer above are the intended commercial posture.
+  Company:             Grey & Associates Ltd
+  Registered in:       England and Wales
+  Company number:      [TO BE INSERTED BY LICENSOR]
+
+
+END OF EULA
