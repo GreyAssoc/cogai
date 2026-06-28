@@ -199,7 +199,7 @@ controlling document.
 
 7.4 **Your responsibilities as a Cog operator.** Where you
 operate Cog and process personal data of others (for example,
-under the Family or Teams Tier), you are the data controller in
+under the Teams Tier), you are the data controller in
 respect of that processing. We are not a data processor for
 that data and have no visibility into it.
 
