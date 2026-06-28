@@ -263,8 +263,7 @@ Cog writes every turn to the bundled Postgres as a typed trace row.
 You can query it directly:
 
 ```bash
-docker compose exec postgres psql -U cog -d cog -c \
-  "SELECT kind, count(*) FROM cog_traces_v1 GROUP BY kind ORDER BY count DESC;"
+docker compose exec postgres psql -U cog -d cog -c   "SELECT kind, count(*) FROM cog_traces_v1 GROUP BY kind ORDER BY count DESC;"
 ```
 
 Expected output after a handful of messages:
@@ -364,7 +363,7 @@ your install directory — existing answers are kept; new prompts
 ## 11. Production posture
 
 The defaults above are tuned for a single-operator pilot. Before
-exposing the bot to other users (i.e. before Family / Teams), walk
+exposing the bot to other users (i.e. before Teams), walk
 the production checklist in [`docs/runbook.md`](./docs/runbook.md):
 
 - `COG_BASH_REQUIRE_ALLOWLIST=true`
