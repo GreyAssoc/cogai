@@ -68,9 +68,7 @@ In these Terms:
 ## 3. Eligibility and account terms
 
 3.1 **Age.** You must be at least 18 years old to create an
-Account or enter into a Subscription. For Family-Tier child
-Seats, the registering adult ("parent") warrants that they
-have parental authority over each child Seat user.
+Account or enter into a Subscription.
 
 3.2 **Accuracy of information.** When you create an Account or
 purchase a Subscription, you agree to provide accurate, current,
