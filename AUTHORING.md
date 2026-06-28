@@ -237,7 +237,7 @@ input_schema:
   required: [email, plan]
   properties:
     email: { type: string, format: email }
-    plan: { type: string, enum: [free, pro, family, teams] }
+    plan: { type: string, enum: [free, pro, teams] }
 permissions:
   network:
     - host: hooks.zapier.com
