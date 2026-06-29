@@ -183,17 +183,179 @@ Verify your download integrity with:
 sha256sum -c SHA256SUMS --ignore-missing
 ```
 
-## Tiers
 
-| Tier | Status | Pitch |
+## Built-in gears (89, all tiers)
+
+Gears are typed Go functions the agent dispatches as tools. **None of the 89 gears below are tier-gated** — every gear in the binary is available on every tier including Free. What Pro+ unlocks is the *quota for adding your own* (custom_gears_max — Free 3, Pro unlimited) and the orchestration gears that coordinate multiple agents.
+
+### File I/O & search
+
+| Gear | Purpose |
+|---|---|
+| `read` | Read a file (text, code, or extracted `.docx` / `.xlsx` / `.pdf` / `.pptx`). Smart-truncates large files. |
+| `write` | Write or overwrite a file. Path-confined to `FileWriteRoots`. |
+| `edit` | Targeted edit — replace a string, patch a line range. Cheaper than full write. |
+| `list` | List directory contents with type, size, mtime. |
+| `find_files` | Glob across the read roots. Honours `.cog-ignore`. |
+| `search` | Regex content search across read roots. |
+| `file_info` | Stat a single path — size, mtime, type, content sample. |
+| `path_resolve` | Resolve a "label"-style path (`@active-jobs/foo.docx`) to a real fs path. |
+| `extract` | Generic text extractor; routes by extension to the right reader. |
+| `diff` | Compute a structured diff between two files or strings. |
+| `mkdir` / `move` / `copy` / `remove` / `touch` | Filesystem ops, write-root confined, pending-op confirmation for destructive actions. |
+
+### Shell, build, VCS
+
+| Gear | Purpose |
+|---|---|
+| `bash` | Execute a shell command. Allowlist-required in production; `COG_DISABLE_BASH=true` to disable. |
+| `run` | Project's test command (`project.commands.test`). Captures exit + duration + output. |
+| `git` | Structured `git status` / `git diff` / common subcommands. No shell pipe risk. |
+| `code_build` | Project's build command. Returns exit, duration, captured excerpt. |
+| `code_test` | Project's test suite. |
+| `code_status` | Aggregate of git status + last build/test status. |
+| `code_diff` | Pending diff vs HEAD or a named ref. |
+| `code_lint` | Run the configured linter. Returns structured findings when parseable. |
+| `code_format` | Run the configured formatter on a file. |
+
+### Code intelligence (cog's static analysis index)
+
+| Gear | Purpose |
+|---|---|
+| `code_outline` | File's top-level symbol map — funcs, types, consts with line ranges. |
+| `code_definition` | Where a symbol is defined — file + line range + doc excerpt. |
+| `code_callers` | Direct callers of a symbol. Graph-derived; no grep false-positives. |
+| `code_callees` | What a symbol calls. |
+| `code_imports` | Outgoing imports of a file. |
+| `code_impact` | Transitive callers of a symbol up to depth N — full blast radius of a change. |
+| `code_path` | Find a reference path between two symbols. |
+| `code_callers_global` / `code_impact_global` / `code_path_global` | Same three queries across the cross-project index. Operator opt-in. |
+| `code_exec` | Execute a snippet (Python or JavaScript) via the provider's native code execution where available. 30s cap locally. |
+
+### Web
+
+| Gear | Purpose |
+|---|---|
+| `fetch` | HTTP(S) GET with SSRF guard (blocks private / loopback / link-local). |
+| `web_search` | Multi-backend web search (Brave / Bing / DDG / Gemini-grounded) with key-aware backend ordering. |
+| `wikipedia` | Direct Wikipedia search + extract — prefer over `web_search` for encyclopedic questions. |
+| `arxiv` | arXiv paper search + metadata. |
+| `weather` | Current + forecast weather via Open-Meteo. |
+| `maps` | Geocode + directions via OSM-backed services. |
+| `youtube_transcript` | Pull a YouTube video's transcript by URL. |
+| `fx_rate` | Live FX rate between two currencies. |
+| `stock_quote` | Live stock quote by ticker. |
+
+### Media + document extraction & generation
+
+| Gear | Purpose |
+|---|---|
+| `pdf_extract` | Extract text + structure from a PDF. |
+| `xlsx_extract` | Extract structured cells + ranges from `.xlsx` / `.xlsm`. |
+| `audio_transcribe` | Transcribe an audio file (mp3 / m4a / wav / etc.) via Gemini. |
+| `image_describe` | Caption / describe an image. |
+| `image_generate` | Generate an image from a prompt. |
+| `text_to_speech` | Synthesise speech to an audio file. |
+| `docgen` | Generic document generation. |
+| `office_write` | Create `.docx` / `.xlsx` / `.pptx` / `.pdf` from structured content. |
+
+### Google Workspace (BYO OAuth)
+
+| Gear | Purpose |
+|---|---|
+| `gmail_list_unread` / `gmail_search` / `gmail_get` / `gmail_thread` | Read inbox: list unread, search, fetch a message, fetch a thread. |
+| `gmail_mark` / `gmail_send` | Mark read/unread/important; send a message. |
+| `calendar_list_events` / `calendar_get` / `calendar_find_free` | Read calendars: list, fetch, find free slots across calendars. |
+| `calendar_create` / `calendar_update` / `calendar_delete` | Write calendar: create / update / delete with pending-op confirmation. |
+| `drive_search` / `drive_get_metadata` / `drive_read` | Read Drive: search, metadata, content-as-text. |
+| `drive_upload` / `drive_share` | Write Drive: upload a file, share with another user. |
+| `sheets_read` / `sheets_list` | Read Sheets: cells/ranges, list sheets in a workbook. |
+| `sheets_write` / `sheets_append` / `sheets_clear` | Write Sheets: replace, append, clear ranges. |
+
+### Memory + state
+
+| Gear | Purpose |
+|---|---|
+| `remember` | Save a persona fact to pgvector-backed memory (cross-session, cross-project). |
+| `forget` | Remove a previously-saved fact. |
+
+### Cron + orchestration
+
+| Gear | Purpose | Tier |
 |---|---|---|
-| **Free** | **shipping** | 1 seat, real coding agent, 3 custom gears, 1 custom agent, Telegram + Discord, 30-day trace retention. **Persistent memory always free.** All 8 model providers, all models, no token markup. |
-| Pro | planned | Parallel agent coordination (Council + orchestrator + agent teams), unlimited custom gears/agents, private professional interfaces (WhatsApp + web chat + HTTP API + IDE/CLI host), self-imposed spend cap, 365-day retention. |
-| Teams | planned | Multi-user admin plane, OIDC SSO, per-user policy mutation, on-prem connector. Governance-priced, not chat-priced. |
+| `cron_schedule` | List, add, remove, enable / disable, or run cron jobs. | Free |
+| `dispatch_agent` | Hand off the turn to a specialist built-in agent (e.g. `@researcher`). | Free |
+| `subagent` | Run a sub-cog with a separate context window for a focused subtask. | **Pro+** |
+| `task_start` / `task_status` / `task_result` / `task_update` / `task_list` / `task_cancel` | Async task management — fire-and-forget long-running gears that survive turn boundaries. | Free |
 
-Full tier-vs-feature matrix at [getcog.ai/pricing](https://getcog.ai/pricing).
-Pricing for paid tiers is deliberately deferred until Free has
-shipped and we have real signal.
+### Specialised (UK party-wall surveying)
+
+| Gear | Purpose |
+|---|---|
+| `grey_clients_list` | List active client folders under the surveyor workspace. |
+| `grey_clients_find` | Fuzzy-find a client folder by name. |
+| `grey_docs_generate` | Generate surveyor documents (notices, letters, reports) into a timestamped subdir. |
+| `grey_docs_serve_notices` | Multi-recipient notice service flow. |
+
+### Time
+
+| Gear | Purpose |
+|---|---|
+| `date_time` | Current time, timezone, date arithmetic — the agent should never guess "today's date". |
+
+---
+
+## Tier matrix — what each tier unlocks
+
+The principle, from `TIERS.md §1`: **never gate things that make cog useful as a coding agent.** Memory, plan mode, cron, code intelligence, every model provider, every built-in agent, every built-in gear are always Free. Paid tiers gate *coordinated execution* and *unlimited extensibility* — features that compound with scale, not features needed to ship one project.
+
+| Capability | **Free** *(shipping)* | **Pro** *(planned)* | **Teams** *(planned)* |
+|---|---|---|---|
+| **Seats** | 1 | 1 | unlimited |
+| **All 8 model providers** | ✓ | ✓ | ✓ |
+| **All models, no token markup** | ✓ | ✓ | ✓ |
+| **All 89 built-in gears** | ✓ | ✓ | ✓ |
+| **All 37 built-in agents** | ✓ | ✓ | ✓ |
+| **All 11 built-in skills** | ✓ | ✓ | ✓ |
+| **Persistent pgvector memory** | ✓ | ✓ | ✓ |
+| **Plan mode + stuck-detector** | ✓ | ✓ | ✓ |
+| **Cron scheduler** | ✓ | ✓ | ✓ |
+| **Cancellation (`/stop`)** | ✓ | ✓ | ✓ |
+| **Streaming progress** | ✓ | ✓ | ✓ |
+| **Auto-compaction** | ✓ | ✓ | ✓ |
+| **Persona overlays (8 × M/F/N)** | ✓ | ✓ | ✓ |
+| **Coder-review-coder loop** | ✓ | ✓ | ✓ |
+| **Custom gears beyond Tier 0** | 3 | **unlimited** | **unlimited** |
+| **Custom agents beyond built-ins** | 1 | **unlimited** | **unlimited** |
+| **Custom skills beyond built-ins** | 3 | **unlimited** | **unlimited** |
+| **Council (4-agent parallel + chair + refinement)** | ✗ | **✓** | **✓** |
+| **Orchestrator (`subagent` gear)** | ✗ | **✓** | **✓** |
+| **Bundled agent teams** (go-dev-team, fe-sec-team, …) | ✗ | **✓** | **✓** |
+| **Self-imposed spend cap UI** | ✗ | **✓** | **✓** |
+| **Audit / governance dashboards** | ✗ | self-only | **full multi-user** |
+| **Per-user policy mutation (budget caps, allowed providers, quotas)** | ✗ | self-only | **admin over users** |
+| **OIDC SSO** | ✗ | ✗ | **✓** |
+| **GDPR Art. 15 subject-access endpoint** | ✗ | ✗ | **✓** |
+| **Reporting endpoints (usage / violations / cost outliers / transparency)** | ✗ | ✗ | **✓** |
+| **Trace retention** | 30 days | 365 days | configurable |
+| **Channels** | Telegram + Discord | + WhatsApp + web chat + HTTP API + IDE/CLI | + on-prem connector |
+| **Source-access rider (audit the engine under NDA)** | ✗ | ✗ | **✓** |
+| **No phone-home** | ✓ | daily check-in (licence_id only) | configurable: online or fully offline |
+| **Licence file required?** | no | yes (Ed25519-signed) | yes (Ed25519-signed, org-bound) |
+
+### Free is a credible standalone product
+
+Free isn't a teaser. You get a real coding agent that beats most paid alternatives on the coder-review-coder loop, **all** model providers (BYO keys, no token markup), persistent memory across restarts, cron, plan mode, 37 built-in agents, 89 typed gears, and 30-day forensic-grade audit retention. Everything you need to ship one project end-to-end.
+
+### Pro unlocks parallel coordination + unlimited extensibility
+
+The features that compound with scale: running 4 reviewers in parallel via Council, dispatching a sub-cog for a focused subtask, bundling reviewers into pre-configured teams, building unlimited custom gears for your own SaaS surface, hosting on WhatsApp / web / HTTP / your IDE.
+
+### Teams adds the governance plane
+
+For multi-user deployments: OIDC, per-user budget caps enforced as integers (no float drift), GDPR subject-access, audit dashboards across the whole org, on-prem connector, source-access rider for procurement due diligence.
+
+Pricing for Pro / Teams is deliberately deferred — see [getcog.ai/pricing](https://getcog.ai/pricing). The Free tier is perpetual, single-seat, BYO-keys; no signup or licence file required.
 
 ## Authoring declarative gears
 
