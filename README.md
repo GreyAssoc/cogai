@@ -184,6 +184,36 @@ sha256sum -c SHA256SUMS --ignore-missing
 ```
 
 
+## Built-in skills (11, all tiers)
+
+Skills are procedural-knowledge YAMLs auto-injected into the system prompt when a regex trigger matches the user's prompt. They sit between gears (one callable) and agents (long-lived identity): a short recipe activated only when the model is about to do the matching kind of work. **All 11 ship in the binary and are free for every tier.** Add up to 3 custom skills on Free, unlimited on Pro+.
+
+Auto-trigger is on by default; toggle off globally via `COG_SKILLS_AUTO=false`. The model can also load any skill explicitly via the `skill_invoke(name)` gear.
+
+| Skill | Fires on prompts like… | What it does |
+|---|---|---|
+| `git_commit_workflow` | "commit these changes", "let's commit", "git commit" | Commit safely — status, diff, scoped add, why-not-what message. |
+| `code_review_protocol` | "review this PR", "check this code", "feedback on this" | Layered code review — correctness, security, tests, edge cases, readability. |
+| `research_with_citations` | "research", "look up", "find out about", "what's the latest on" | Multi-source research with explicit citations + cross-check. |
+| `safe_overwrite_check` | "overwrite", "replace this file", "rewrite this config" | Read-before-write pattern — never blind-overwrite an existing file. |
+| `debug_systematic` | "this is broken", "find the bug", "why does it crash" | Reproduce → isolate → test → fix → verify. No symptom-chasing. |
+| `incident_response` | "production is down", "outage", "incident" | Note timing, check logs, communicate, snapshot, postmortem. |
+| `check_email` | "check my email", "any new messages", "what's in my inbox" | Triage inbox into needs-attention / read-later / ignore. Offer to draft replies. |
+| `check_calendar` | "check my calendar", "what's on today", "do I have meetings" | Today's schedule with conflict / back-to-back / VIP flags + meeting-prep offer. |
+| `compose_email_carefully` | "send an email", "draft a reply", "compose" | Pre-send checklist — subject, recipients, tone, attachments, no auto-send. |
+| `meeting_prep` | "prepare for my meeting", "brief me on my next call" | Brief for an upcoming meeting from calendar + email + memory. |
+| `create_skill` | "create a new skill", "how do I author a skill" | Meta-skill — walks you through name, triggers, procedure, required gears, save path, and a smoke test for a new custom skill. |
+
+### Storage layers (highest precedence first)
+
+```
+<workdir>/.cog/skills/*.yaml   — per-project overrides (refused if inside a FileWriteRoot)
+~/.cog/skills/*.yaml           — operator-authored (the recommended layer)
+engine/skills/builtin/*.yaml   — the 11 built-ins, embedded into the binary
+```
+
+Same-name skills in a higher layer fully replace lower layers — operators override a built-in by dropping `~/.cog/skills/git_commit_workflow.yaml` rather than patching the binary. Name normalisation (TrimSpace + ToLower) means a near-alias like "Create_Skill " still resolves to the built-in `create_skill` key. The `<workdir>/.cog/skills/` layer is refused in default deployments because the agent's `write` gear can reach it — keep custom skills in `~/.cog/skills/` on the host.
+
 ## Built-in gears (89, all tiers)
 
 Gears are typed Go functions the agent dispatches as tools. **None of the 89 gears below are tier-gated** — every gear in the binary is available on every tier including Free. What Pro+ unlocks is the *quota for adding your own* (custom_gears_max — Free 3, Pro unlimited) and the orchestration gears that coordinate multiple agents.
