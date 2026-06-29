@@ -36,13 +36,103 @@ A production-grade AI agent system that runs on your hardware:
   your prompts + data live in your own Postgres, and the Free
   tier needs no licence file, no signup, no account.
 
+## Built-in agents
+
+All 37 agents below are bundled in the binary and available **free for every tier**. Invoke with `@<name>` in your bot, or set the agent in your session config. Paid tiers don't gate individual agent access — Pro+ gates *coordinated* execution (Council, orchestrator, agent teams).
+
+### General-purpose (9)
+
+| `@name` | Role |
+|---|---|
+| `general` | Default cog assistant. Friendly, honest, hands off to a specialist when one fits better. |
+| `cog-coder` | Flagship coding agent. 15 languages (bash, cpp, csharp, frontend, go, java, javascript, kotlin, php, python, ruby, rust, sql, swift, typescript) via language-specialist prompts auto-loaded by file extension. |
+| `researcher` | Web-search + cross-source synthesis with cited findings. |
+| `writer` | Long-form prose, structured docs, editing. Audience-aware, voice-preserving. |
+| `planner` | Structured execution plans — ordered steps with verification, dependencies, rollback. Drives plan mode. |
+| `lookup` | Factual-lookup specialist. Wikipedia → arXiv → web_search fallback for one-shot factual questions. |
+| `fact-check` | SUPPORTED / CONTRADICTED / INCONCLUSIVE on a single claim, cited from ≥2 independent sources. |
+| `media-reader` | Single file → right extractor (pdf / xlsx / office / image / audio) → plain text. |
+| `senior-reviewer` | Opt-in second pass that verifies / refines a primary model's draft. Higher accuracy at extra cost. |
+
+### Code review — cross-language (10)
+
+| `@name` | Concern | Tier |
+|---|---|---|
+| `security` | Vulnerability analysis, OWASP top 10, dependency risk | 1 VETO |
+| `compliance` | GDPR / regulatory / lawful basis | 1 VETO |
+| `data-integrity` | Type strictness, constraint coverage | 1 VETO |
+| `cross-language-security` | FFI / marshalling boundary security | 1 VETO |
+| `error-handling` | Error wrapping, fallback discipline, silent-failure detection | 2 |
+| `logging-audit` | Trace coverage without secret leakage | 2 |
+| `design-adherence` | Adherence to stated design / architecture | 2 |
+| `performance` | Hot paths, allocation, query plans | 3 |
+| `architect` | Module boundaries, dependency direction, layering | 3 |
+| `reviewer` | General code review — catches what specialists miss | 3 |
+
+### Code review — Go (5)
+
+| `@name` | Concern | Tier |
+|---|---|---|
+| `go-purist` | Idiomatic Go; would Rob Pike approve? | 3 |
+| `go-pragmatist` | Ship-vs-perfect tradeoffs in Go | 3 |
+| `go-pessimist` | Race conditions, resource leaks, what can fail | 2 |
+| `go-security` | Go-specific vulns, panic propagation, supply chain | 1 VETO |
+| `go-hacker` | Adversarial probing of Go code | 2 |
+
+### Code review — Frontend (6)
+
+| `@name` | Concern | Tier |
+|---|---|---|
+| `fe-purist` | Semantic HTML, vanilla ES2020+ correctness | 3 |
+| `fe-pragmatist` | Browser-compat vs. cleanliness | 3 |
+| `fe-pessimist` | Async edge cases, event-handler leaks, DOM resilience | 2 |
+| `fe-security` | XSS, CSRF, CSP, supply chain | 1 VETO |
+| `fe-hacker` | Browser-side adversarial probing | 2 |
+| `fe-functional` | Functional correctness, event flow, state mutation | 3 |
+
+### Code review — Mobile / Kotlin (4)
+
+| `@name` | Concern | Tier |
+|---|---|---|
+| `kotlin-purist` | Idiomatic Kotlin, structured concurrency | 3 |
+| `mobile-security` | Android security model, permission abuse, supply chain | 1 VETO |
+| `mobile-hacker` | Adversarial probing of mobile code | 2 |
+| `android-mobile-coding` | Jetpack Compose, Hilt, Room patterns | 3 |
+
+### Code review — Integration (3)
+
+| `@name` | Concern | Tier |
+|---|---|---|
+| `api-guardian` | API contract stability, version compatibility | 2 |
+| `data-flow` | End-to-end data flow correctness | 2 |
+| `failure-modes` | Failure injection, recovery paths | 2 |
+
+### Research helper (1)
+
+| `@name` | Concern | Tier |
+|---|---|---|
+| `ui-ux-researcher` | UI/UX patterns, accessibility | 3 |
+
+### The coder-review-coder loop
+
+The canonical Free-tier coding workflow. Reviewers don't have to be ganged up into a team to be useful — a single review pass between coder rounds catches most issues.
+
+```
+@cog-coder       writes / fixes code
+@<review-agent>  critiques (any single agent, e.g. @go-security)
+@cog-coder       revises based on the critique
+@<other-agent>   (optional) second-pass review
+```
+
+This loop ships as a CI-tested regression suite. See [TIERS.md §7.3](https://github.com/GreyAssoc/cog/blob/main/TIERS.md) on the source repo for the full agent reference.
+
 ## Quick install — Docker (recommended)
 
 If you have Docker, the fastest path is to pull the published
 image and start a single-container deployment:
 
 ```bash
-docker pull greyassoc/cogai:v0.2.0
+docker pull greyassoc/cogai:v0.3.3
 ```
 
 For a full deployment (gateway + bundled Postgres), use the
@@ -52,7 +142,7 @@ up the persistent volume + healthcheck + restart policy for you.
 The Discord variant is a separate image:
 
 ```bash
-docker pull greyassoc/cogai-discord:v0.2.0
+docker pull greyassoc/cogai-discord:v0.3.3
 ```
 
 Multi-arch: both images publish for `linux/amd64` + `linux/arm64`.
@@ -150,3 +240,4 @@ under the same terms as the rest of cog.
 **Issues & support:** [github.com/GreyAssoc/cogai/issues](https://github.com/GreyAssoc/cogai/issues) · support@getcog.ai
 **Domain:** [getcog.ai](https://getcog.ai)
 **Contact:** Steve Whitehead — steve.w@greyandassociates.co.uk
+
