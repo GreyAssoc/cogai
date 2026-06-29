@@ -126,31 +126,52 @@ The canonical Free-tier coding workflow. Reviewers don't have to be ganged up in
 
 This loop ships as a CI-tested regression suite. See [TIERS.md §7.3](https://github.com/GreyAssoc/cog/blob/main/TIERS.md) on the source repo for the full agent reference.
 
-## Quick install — Docker (recommended)
+## Quick install — guided setup via Docker (recommended)
 
-If you have Docker, the fastest path is to pull the published
-image and start a single-container deployment:
-
-```bash
-docker pull greyassoc/cogai:v0.3.3
-```
-
-For a full deployment (gateway + bundled Postgres), use the
-docker-compose template from the installer (see below) — it wires
-up the persistent volume + healthcheck + restart policy for you.
-
-The Discord variant is a separate image:
+If you have Docker installed, this is the fastest path. One
+interactive container walks you through the same setup the native
+installer does — Telegram bot token, allowed user IDs, your model
+provider API key(s), default model, install location — and writes
+`docker-compose.yml` + `.env` + `cog_mounts.yaml` to your current
+directory:
 
 ```bash
-docker pull greyassoc/cogai-discord:v0.3.3
+mkdir cog && cd cog
+docker run --rm -it -v $(pwd):/setup greyassoc/cog-installer:v0.3.4
+docker compose up -d
 ```
 
-Multi-arch: both images publish for `linux/amd64` + `linux/arm64`.
+Open Telegram, find your bot, send `/help`. The first run pulls
+~120 MB (gateway image + bundled `pgvector` Postgres) and
+typically completes in under 60 seconds on a fast connection.
 
-## Install via the installer (~5 minutes, all platforms)
+The Discord variant of the gateway is a separate image and gets
+wired in automatically by the installer if you supply a Discord
+bot token:
 
-If you don't already have Docker installed and prefer a guided
-setup, grab the installer for your platform from
+```bash
+docker pull greyassoc/cogai-discord:v0.3.4
+```
+
+All three images publish multi-arch (`linux/amd64` + `linux/arm64`).
+
+### Hand-rolled compose (advanced)
+
+If you want to skip the installer and write your own
+`docker-compose.yml`, pull the gateway image and bundle it with
+`pgvector/pgvector:pg16`. See [`DEPLOY.md`](https://github.com/GreyAssoc/cogai/blob/main/DEPLOY.md)
+for the required env vars (Telegram token, allowed user IDs, at
+least one model provider key, Postgres URL).
+
+```bash
+docker pull greyassoc/cogai:v0.3.4
+```
+
+## Install via the native installer (no Docker prerequisite)
+
+If you don't already have Docker installed and prefer a fully
+guided setup (the native installer prompts you through Docker
+installation too where needed), grab the platform binary from
 [Releases](https://github.com/GreyAssoc/cogai/releases/latest):
 
 | Platform | File |
