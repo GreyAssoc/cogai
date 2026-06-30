@@ -137,7 +137,7 @@ directory:
 
 ```bash
 mkdir cog && cd cog
-docker run --rm -it -v $(pwd):/setup greyassoc/cog-installer:v0.3.8
+docker run --rm -it -v $(pwd):/setup greyassoc/cog-installer:v0.3.9
 docker compose up -d
 ```
 
@@ -150,7 +150,7 @@ wired in automatically by the installer if you supply a Discord
 bot token:
 
 ```bash
-docker pull greyassoc/cogai-discord:v0.3.8
+docker pull greyassoc/cogai-discord:v0.3.9
 ```
 
 All three images publish multi-arch (`linux/amd64` + `linux/arm64`).
@@ -164,7 +164,7 @@ for the required env vars (Telegram token, allowed user IDs, at
 least one model provider key, Postgres URL).
 
 ```bash
-docker pull greyassoc/cogai:v0.3.8
+docker pull greyassoc/cogai:v0.3.9
 ```
 
 ## Install via the native installer (no Docker prerequisite)
