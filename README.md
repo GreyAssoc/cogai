@@ -19,18 +19,24 @@ A production-grade AI agent system that runs on your hardware:
   per-message.
 - **Persistent memory** — pgvector-backed facts that survive
   restarts. Cross-session, cross-project. Always free.
-- **73 typed gears** — file I/O, git, build, test, shell, web
+- **89 typed gears** — file I/O, git, build, test, shell, web
   fetch, `.docx` / `.xlsx` / `.pdf` / `.pptx` read+write, Google
   Workspace, calendar, math, image generate/describe, audio
   transcribe, text-to-speech, web search across multiple
   backends, and more.
-- **33 built-in agents** — `cog-coder` (15 languages, flagship),
-  plus `general` / `researcher` / `writer` / `planner`, plus 28
-  single-perspective code-review specialists.
+- **37 built-in agents** — `cog-coder` (15 languages, flagship),
+  plus `general` / `researcher` / `writer` / `planner`, 4 helpers,
+  and 28 single-perspective code-review specialists.
+- **11 built-in skills** — procedural-knowledge files that
+  auto-trigger on matched prompts.
 - **Forensic-grade audit trail** — every turn is a typed Postgres
   row (cost, provider, model, tokens including provider-side
   reasoning tokens, failure-class as columns). Query with
-  Metabase / Looker / `psql`.
+  Metabase / Looker / `psql`. Underneath, cog is being rebuilt on
+  an append-only, hash-linked event log that makes sessions
+  **byte-exact replayable** and the audit trail **verifiable
+  rather than merely trusted** — see
+  [what's being built](#whats-being-built--the-event-log-substrate).
 - **Local-first, BYO-keys, privacy-preserving, licence-light** —
   cog runs on your machine, you supply your own model API keys,
   your prompts + data live in your own Postgres, and the Free
@@ -124,7 +130,7 @@ The canonical Free-tier coding workflow. Reviewers don't have to be ganged up in
 @<other-agent>   (optional) second-pass review
 ```
 
-This loop ships as a CI-tested regression suite. See [TIERS.md §7.3](https://github.com/GreyAssoc/cog/blob/main/TIERS.md) on the source repo for the full agent reference.
+This loop ships as a CI-tested regression suite. The full agent reference is the tables above — every one of the 37 is in the binary on every tier.
 
 ## Quick install — guided setup via Docker (recommended)
 
@@ -358,9 +364,9 @@ Gears are typed Go functions the agent dispatches as tools. **None of the 89 gea
 
 ## Tier matrix — what each tier unlocks
 
-The principle, from `TIERS.md §1`: **never gate things that make cog useful as a coding agent.** Memory, plan mode, cron, code intelligence, every model provider, every built-in agent, every built-in gear are always Free. Paid tiers gate *coordinated execution* and *unlimited extensibility* — features that compound with scale, not features needed to ship one project.
+The principle, from `TIERS.md §1`: **never gate things that make cog useful as a coding agent.** Memory, plan mode, cron, code intelligence, every model provider, every built-in agent, every built-in gear are always Free. Paid tiers gate *coordinated execution*, *declarative automation* and *governance* — features that compound with scale, not features needed to ship one project.
 
-| Capability | **Free** *(shipping)* | **Pro** *(planned)* | **Teams** *(planned)* |
+| Capability | **Free** *(shipping)* | **Pro** *(shipping)* | **Teams** *(planned)* |
 |---|---|---|---|
 | **Seats** | 1 | 1 | unlimited |
 | **All 8 model providers** | ✓ | ✓ | ✓ |
@@ -376,37 +382,315 @@ The principle, from `TIERS.md §1`: **never gate things that make cog useful as 
 | **Auto-compaction** | ✓ | ✓ | ✓ |
 | **Persona overlays (8 × M/F/N)** | ✓ | ✓ | ✓ |
 | **Coder-review-coder loop** | ✓ | ✓ | ✓ |
-| **Custom gears beyond Tier 0** | 3 | **unlimited** | **unlimited** |
-| **Custom agents beyond built-ins** | 1 | **unlimited** | **unlimited** |
-| **Custom skills beyond built-ins** | 3 | **unlimited** | **unlimited** |
+| **Custom gears beyond the built-ins** | 3 | **unlimited** | **unlimited** |
+| **Custom agents beyond the built-ins** | 3 | **unlimited** | **unlimited** |
+| **Custom skills beyond the built-ins** | 3 | **unlimited** | **unlimited** |
 | **Council (4-agent parallel + chair + refinement)** | ✗ | **✓** | **✓** |
 | **Orchestrator (`subagent` gear)** | ✗ | **✓** | **✓** |
 | **Bundled agent teams** (go-dev-team, fe-sec-team, …) | ✗ | **✓** | **✓** |
-| **Self-imposed spend cap UI** | ✗ | **✓** | **✓** |
+| **Custom teams** (your own members + chair + VETO) | ✗ | **✓** | **✓** |
+| **Chains** (declarative YAML workflows + the `reason` gear) | ✗ | **✓** | **✓** |
+| **Token usage reporting** (total + **per-agent**) | ✗ | **self** | **org-wide** |
+| **Self-imposed spend cap** | ✗ | **✓** | **✓** |
 | **Audit / governance dashboards** | ✗ | self-only | **full multi-user** |
 | **Per-user policy mutation (budget caps, allowed providers, quotas)** | ✗ | self-only | **admin over users** |
 | **OIDC SSO** | ✗ | ✗ | **✓** |
 | **GDPR Art. 15 subject-access endpoint** | ✗ | ✗ | **✓** |
 | **Reporting endpoints (usage / violations / cost outliers / transparency)** | ✗ | ✗ | **✓** |
 | **Trace retention** | 30 days | 365 days | configurable |
-| **Channels** | Telegram + Discord | + WhatsApp + web chat + HTTP API + IDE/CLI | + on-prem connector |
+| **Channels** | Telegram + Discord | + WhatsApp, HTTP API, operator dashboard | + on-prem connector |
 | **Source-access rider (audit the engine under NDA)** | ✗ | ✗ | **✓** |
 | **No phone-home** | ✓ | daily check-in (licence_id only) | configurable: online or fully offline |
 | **Licence file required?** | no | yes (Ed25519-signed) | yes (Ed25519-signed, org-bound) |
 
+Tier is resolved **only** from an Ed25519-signed licence file, verified locally against a public key embedded in the binary. No phone-home for Free, no signup, no account. The tier policies are compiled into the binary, so there is no config file to edit your way into a paid feature.
+
 ### Free is a credible standalone product
 
-Free isn't a teaser. You get a real coding agent that beats most paid alternatives on the coder-review-coder loop, **all** model providers (BYO keys, no token markup), persistent memory across restarts, cron, plan mode, 37 built-in agents, 89 typed gears, and 30-day forensic-grade audit retention. Everything you need to ship one project end-to-end.
+Free isn't a teaser. You get a real coding agent that holds its own on the coder-review-coder loop, **all** model providers (BYO keys, no token markup), persistent memory across restarts, cron, plan mode, 37 built-in agents, 89 typed gears, 11 skills, and 30-day forensic-grade audit retention. Everything you need to ship one project end-to-end, perpetually, without giving us an email address.
 
-### Pro unlocks parallel coordination + unlimited extensibility
+---
 
-The features that compound with scale: running 4 reviewers in parallel via Council, dispatching a sub-cog for a focused subtask, bundling reviewers into pre-configured teams, building unlimited custom gears for your own SaaS surface, hosting on WhatsApp / web / HTTP / your IDE.
+# Pro — the single-seat power tier
 
-### Teams adds the governance plane
+*Shipping since v0.4.0, with its gates enforced at the trust boundary: Free gets a hard refusal, not a warning.*
 
-For multi-user deployments: OIDC, per-user budget caps enforced as integers (no float drift), GDPR subject-access, audit dashboards across the whole org, on-prem connector, source-access rider for procurement due diligence.
+Free gives you one very good agent. **Pro gives you a coordinated system of them, a way to automate it, and the numbers to run it on.**
+
+## 1. Parallel agent coordination
+
+The bright line between Free and Pro isn't *which* agents you can reach — it's whether they can run **together, under a protocol**.
+
+| Capability | Free | Pro |
+|---|---|---|
+| Invoke `@go-security` on its own, read its findings | ✓ | ✓ |
+| Run `@go-dev-team` — three agents in parallel, chair synthesises, VETO honoured | ✗ | ✓ |
+| Compose your own team (members + chair + protocol + who holds VETO) | ✗ | ✓ |
+| Dispatch a sub-agent with its own context from inside a session | ✗ | ✓ |
+| Convene a 4-person council on a hard question | ✗ | ✓ |
+
+### Council — four minds, one answer
+
+`/council <question>` runs your question through **four isolated councillor agents**, each with a deliberately different epistemic stance, then a **chair** that reads all four and produces the answer you see.
+
+| Councillor | The stance it argues from |
+|---|---|
+| **First-principles** | Derives from foundations, states its assumptions, and says so when the question rests on a faulty premise. Doesn't defer to received wisdom. |
+| **Empiricist** | Separates what is *known* (citable) from what is *believed*, quantifies uncertainty, and asks "how would I know if I were wrong?" before committing. |
+| **Devil's advocate** | The loyal opposition. Finds the strongest argument *against* the obvious answer and surfaces what you might not want to hear. Forensic, never gratuitous. |
+| **Domain pragmatist** | The long-experienced practitioner. Weighs real constraints and common pitfalls; allergic to elegant theories that have already been tried and failed. |
+
+Councillors are peers, not ranked. Each runs as an isolated agent with no shared state, so their errors are less correlated than four samples from one prompt. An optional refinement round lets each councillor see the others' first-pass opinions and revise.
+
+**What it costs, stated plainly:** roughly **5× the tokens** of a normal turn, and the latency of the slowest councillor plus the chair. The honest claim is *"fewer obvious mistakes on hard questions"* — not maximum accuracy. There is deliberately **no fact oracle**: four councillors who disagree give you a more honestly hedged answer, not certainty. Reserve it for genuinely high-consequence questions; it is emphatically not the default. The full deliberation lands in your trace store, so you can read what each councillor actually said rather than trusting the synthesis.
+
+### Agent teams — the review panel, coordinated
+
+A team is a **coordinated multi-agent pattern**: several specialists run on the same problem, a chair synthesises, and a consensus protocol respects **VETO authority**. Eight teams ship pre-bundled:
+
+| Team | Members | For |
+|---|---|---|
+| `go-dev-team` | go-purist, go-pragmatist, go-pessimist | Go code quality |
+| `go-sec-team` | go-security **[VETO]**, go-hacker | Go security |
+| `fe-dev-team` | fe-purist, fe-pragmatist, fe-pessimist | Frontend quality |
+| `fe-sec-team` | fe-security **[VETO]**, fe-hacker | Frontend security |
+| `mobile-review` | kotlin-purist, mobile-security **[VETO]**, mobile-hacker | Kotlin / Android |
+| `design` | security, compliance, data-integrity (all **VETO**), performance, error-handling | Design review |
+| `integration` | api-guardian, cross-language-security **[VETO]**, data-flow, failure-modes | Integration review |
+| `research` | ui-ux-researcher | UI/UX |
+
+Three coordination modes: **parallel** (all members on the same prompt, chair synthesises), **sequential** (each member sees the prior one's output), and **consensus** (parallel plus a negotiation round when members disagree, with Tier-1 VETO able to block the verdict outright).
+
+Custom teams are a YAML file naming members, chair, mode and VETO holders — composable from any built-in *or* custom agent.
+
+### Orchestrator
+
+The `subagent` gear dispatches a sub-agent **with its own context** from inside a running session — a genuine second agent loop, not a persona switch. Its token spend is attributed back to it by name (see §4). `dispatch_agent`, the lighter hand-off to a built-in specialist, stays free on every tier; it's the multi-context pattern that's Pro.
+
+## 2. Chains — declarative workflows where every node can think
+
+The agent loop is the right primitive for **ambiguous** work. It's the wrong primitive for deterministic glue: *"every Monday at 09:00, summarise last week's tickets and post the digest"* shouldn't require you to sit in a chat session.
+
+**Chains** are YAML workflow definitions that link gears together with templated data flow — plus the **`reason` gear**, which makes LLM judgement a first-class typed node rather than a bolted-on plugin.
+
+| | Zapier | n8n | Cog chains |
+|---|---|---|---|
+| Trigger → action graph | ✓ | ✓ | ✓ |
+| Self-hostable | ✗ | ✓ | ✓ |
+| LLM reasoning as a first-class node | ✗ (plugin) | ✗ (plugin) | **✓ (the `reason` gear)** |
+| Typed integrations + audit trail | ✓ | ⚠ | ✓ |
+| Visual editor | ✓ | ✓ | ✗ (YAML today) |
+
+**Three trigger types:** HTTP **webhook**, **schedule** (cron), and **agent dispatch** — an agent inside a chat can fire a chain mid-conversation.
+
+**The `reason` gear** takes `{instructions, data, response_schema, gear_subset, max_turns}` and returns JSON matching your schema. It's the universal adapter between steps whose formats don't line up, and the classify / synthesise / summarise node when you need judgement.
+
+**The determinism contract is what makes this operable.** An unschematised LLM step is a liability: three runs of the same ticket might return `{"decision":"escalate"}`, then unparseable prose, then `{"verdict":"ESCALATE"}` — each breaking downstream steps differently. Bind a `response_schema` and the *routing* is locked even though the wording varies: 3 decisions × 3 teams × 5 priorities is 45 possible outcomes, and the model **cannot** emit anything else. Schema violations are a classified retry, not silent bad data.
+
+**Operator-grade by construction:** every run gets a `chain_run_id` stamped on every gear call inside it, so one SQL query reconstructs the entire run. Per-chain wall-clock timeout, gear-call cap and cost cap mean a runaway chain self-terminates. Webhook auth, an env-var allowlist, and a reporting layer that deliberately doesn't expose raw payloads round it out.
+
+Chains run **in-process** — outputs flow through memory, not HTTP. Scale horizontally by running multiple cog instances against one Postgres.
+
+## 3. Unlimited extensibility
+
+Free lets you author 3 custom gears, 3 agents and 3 skills on top of the built-ins. **Pro removes all three ceilings.** This is the tier where cog conforms to your workflow rather than the reverse.
+
+| | What it is | Free | Pro |
+|---|---|---|---|
+| **Custom gears** | Declared HTTP (Tier 1 YAML against the public `cog_gear: v1` schema), declared webhook (Tier 2), or `mcp-to-gear` converter output | 3 | unlimited |
+| **Custom agents** | A system prompt + tool list + persona overlay, registered under a name | 3 | unlimited |
+| **Custom skills** | A YAML declaring trigger regexes, required gears, and the procedural fragment injected when the matcher fires | 3 | unlimited |
+| **Custom teams** | Members + chair + coordination mode + VETO holders | ✗ | ✓ |
+
+Quotas are enforced at **registration**, not at runtime, and the behaviour on tier change is deliberately non-destructive: registrations beyond a lower tier's cap are preserved and marked inactive rather than deleted, and re-activate in registration order on upgrade. **Downgrading never eats your work.**
+
+## 4. Token usage reporting — see which agent spent your money
+
+`agent_id` is threaded through sub-agent dispatch onto every token-bearing event, which makes something no tier had before possible: **per-agent cost attribution**.
+
+When a council run costs 5× a normal turn, you can see *which councillor* spent it. When an agent team reviews a diff, each member reports its own tokens. The orchestrator's sub-agents are itemised by name.
+
+Three ways in:
+
+- **`/usage [Nd]` in chat** — total tokens and cost for the period (default 30 days), then a per-agent breakdown sorted by cost.
+- **`cog usage -user <id> [-days N]`** — the same aggregation as a CLI table.
+- **An optional Metabase dashboard** — a single-file compose add-on with six documented, copy-paste questions: total, per-agent (the headline), per-model, daily trend, and — at Teams — per-user and per-user × agent. The setup guide includes the read-only-role `GRANT` and payload-privacy guidance.
+
+**Strictly self-scoped.** A Pro user only ever sees their own spend.
+
+**Self-audit** gives you your own usage, failures and sessions over the same trace store — and because that store is *your* Postgres with a documented schema, you can point Looker, Tableau or plain `psql` at it and never ask permission.
+
+> **Honest caveat:** `cost_usd` is an estimate from per-model price tables that change. Treat it as best-effort operational signal; the authoritative invoice is your provider's dashboard.
+
+## 5. The spend cap — a safety primitive, not a throttle
+
+Pro sets its own ceiling: *"don't let me burn more than £100 this month."* Free users don't see the cap UI at all — they own their provider bill directly, and that bill is its own protection.
+
+The enforcement underneath is engine-side and the same at every tier: budgets are compared as **integers in micro-USD** so floating-point drift can't slip a request past the ceiling; NaN or infinity in a budget column refuses the request rather than silently degrading to "no cap"; and a per-user lock closes the race where two simultaneous requests both see "under cap" and collectively overshoot. **Soft warning at 80%, hard refusal at 100%.**
+
+## 6. Interfaces, channels and retention
+
+- **WhatsApp** — Pro is the first tier with it. Meta charges per conversation above their free allowance, so the cost is wrapped into the subscription rather than pushed onto Free.
+- **HTTP API** — Bearer-token authenticated, per-source-IP rate limited *before* the token compare so brute-force attempts don't exercise the auth path at line rate.
+- **Operator dashboard** — a server-rendered view of your agents, teams and recent dispatches, embedded in the gateway binary. Vanilla HTML5 + CSS3, no framework.
+- **Chain webhook endpoint** — the HTTP trigger surface for chains.
+- **`cog` CLI** — usage reporting and licence management.
+- **365-day trace retention**, up from 30.
+
+> **Built vs. planned, stated plainly.** The three shipping channel hosts are **Telegram, Discord and WhatsApp**. Web chat, an IDE host and the on-prem connector are on the roadmap — their gates exist, their host binaries don't yet. They are not in your download today.
+
+---
+
+# Teams — multi-user governance
+
+**Status, up front:** the Teams tier is **planned, not yet purchasable.** The machinery below is built and has been through independent security review — the admin plane ships its admin UI, OIDC, signed-licence enforcement, and reporting and transparency endpoints. What isn't open yet is licence issuance for the tier, and there is no hosted SaaS: **self-hosting is the answer today.**
+
+Everything in Pro, **for every seat**, plus the whole admin plane.
+
+## The structural idea: the admin plane is not in the request path
+
+This is the design decision the whole tier rests on.
+
+```
+┌──────────────────────────────────────────────────────┐
+│  admin plane                                         │
+│  • identity / SSO bridge   • policy + budget         │
+│  • reporting + admin UI    • licence validation      │
+└──────────────────────┬───────────────────────────────┘
+                       │ reads + writes config
+                       ▼
+        Postgres + pgvector  (shared trace store)
+                       ▲
+                       │ writes traces, reads policy
+┌──────────────────────┴───────────────────────────────┐
+│  sub-cogs — one process per employee                 │
+│  • talks to the model provider DIRECTLY              │
+│  • policy fetched at session start, cached with TTL  │
+│  • every trace row tagged with user_id               │
+└──────────────────────────────────────────────────────┘
+```
+
+**Policy is mutated in the admin plane but enforced in the engine.** An outage of the admin plane must not stop your people working — it stops *changes to policy* and *new reports*, nothing else. Sub-cogs cache policy with a short TTL and keep going.
+
+**One process per employee**, not tenants in one process, because per-process isolation is the simplest defensible boundary: one person's agent loop can't bleed memory or sessions into another's, a compromised sub-cog doesn't compromise everyone, and different people can run different versions during a rollout.
+
+## Per-user policy — the dials an admin actually turns
+
+| Control | Effect |
+|---|---|
+| Monthly budget cap (USD) | Hard refusal at 100%, warning trace at 80% |
+| Allowed providers / model allowlist | Request refused on a disallowed model |
+| File read / write roots | Engine-enforced path containment |
+| Bash allowlist / disable bash | Unset = engine default, empty = disabled outright |
+| Cron enable / disable | Per-user scheduler access |
+| Council enable + daily cap + concurrent cap | Bounds the 5×-cost feature per person |
+
+Policies resolve **per-user and per-group, narrowest winning**, and the API returns the *effective* policy with its source so an admin can see why someone has the limits they have. Every change is bound to the authenticated admin's email for the audit trail.
+
+**Where enforcement actually happens:** static fields (file roots, bash allowlist, excluded gears) resolve when the agent backend is constructed; dynamic fields (model allowlist, budget) are checked on **every request**. A disabled gear is simply *absent from the toolset* rather than failing at call time. In production posture, a policy-lookup database error **refuses the request** rather than failing open.
+
+## Identity
+
+- **OIDC SSO** — RS256 + JWKS, with single-flighted refresh so unauthenticated callers can't amplify into parallel fetches, an SSRF-guarded fetch client, a 2048-bit minimum on RSA keys, and clock-skew-tolerant claim validation. Entra, Okta and Google all work.
+- **User IDs are opaque to the engine** — email, UUID, employee ID or SAML name identifier, your choice. The engine keys sessions and memory by it and never parses it. Identity is a *host* responsibility.
+- **Sessions** carry a server-side opaque identifier rather than a literal bearer token in a cookie, with the CSRF token bound to the session.
+
+## Reporting, org-wide
+
+| Endpoint | What it gives you |
+|---|---|
+| `/api/usage?group_by=user\|gear\|model\|agent` | Pivot tables across every user — including the same per-agent token attribution Pro sees for itself |
+| `/api/users` | Everyone, with last-active and month-to-date spend |
+| `/api/users/{id}` | One person: sessions, gear breakdown, plan-completion rate, recent failures |
+| `/api/violations` | Budget warnings, failures, permission denials, off-hours sessions, fetches to non-allowlisted domains |
+| `/api/sessions/{id}` | The full trace timeline for one session |
+| `/api/reports/{name}` | Six saved structural-signal queries |
+
+The admin UI renders the same data as server-rendered HTML: a spend and failure dashboard, users, per-user drill-down, the policy pane with near-cap and over-cap rows highlighted, fact counts by category, and failures grouped by class and provider.
+
+**The six structural-signal queries** — top spenders, off-hours activity, sessions touching no project files, cost outliers (>2σ above the mean), fetch destinations, and gears used by only one person.
+
+> **What this deliberately is not.** Cog ships **no automated personal-use classifier**. The queries surface signals; a human interprets them. That's a product decision, and it isn't a configuration knob.
+
+## Data access is compartmented
+
+Four database roles, so the admin plane isn't a single trust blob: sub-cogs get **INSERT-only** on traces and read on policy; admins get full read/write on the admin schema; analysts get **read-only** on traces and can run reports; and employees get **read-only on their own rows**, for transparency.
+
+## Verifying the audit trail itself
+
+Two endpoints, and the distinction between them matters:
+
+- One verifies that the **event hash chain** is intact, and labels itself as such so it can't be mistaken for the stronger result. It counts rows it *couldn't* check rather than passing a session that verified nothing.
+- One verifies the **cryptographically signed trajectory head** using a **public key only** — no signing secret ever sits on the audit host.
+
+The signed endpoint returns **"not configured" rather than a false "verified"** when no verify key is present, and reports rollback detection as *unavailable* when the audit host structurally can't reach the anchor that would provide it. **Refusing to answer is treated as better than answering wrongly.**
+
+## The compliance surface
+
+Cog in a workplace is a monitoring system, and the product treats that as a legal obligation rather than a feature list.
+
+- **GDPR Art. 15** — a subject-access endpoint returns what the system holds about a person, in one call. Self is always allowed; a non-admin requesting someone else is refused. **Art. 17** erasure is a first-class endpoint too.
+- **Lawful-basis notice as a first-class concept** — an admin-editable record, a web form, an API, and sub-cogs that display it on first run. It must be set **before any user is onboarded**: deploying without notice is a **breach of the licence**, not merely discouraged.
+- **A published proportionality bound** — cog records prompts and gear activity from *inside the agent session*. It does **not** record keystrokes, screen, or anything else you do on your machine. That bound is product policy, not a setting.
+- **Redaction on the write path** — secret-shaped strings (provider API keys, GitHub tokens, AWS credentials, JWTs, bearer tokens, database passwords, bot tokens) are scrubbed before anything is stored.
+- **Configurable retention per row class**, with sensible defaults.
+
+## Deployment topologies
+
+| Shape | Fit |
+|---|---|
+| **Single-operator pilot** | One gateway + one Postgres + Telegram. What the project itself runs daily. Free is sufficient. |
+| **Multi-user self-hosted** | Gateway + Postgres + admin plane with a signed licence, OIDC bridge, production posture behind a TLS-terminating proxy |
+| **Air-gapped** | Self-hosted admin plane + sub-cogs + a local model (Ollama / vLLM with an Anthropic-format adapter). Licence delivered on signed media. **Zero network egress.** |
+| **Hosted SaaS** | **Not implemented.** Self-host today. |
+
+## What an enterprise should also know
+
+- **Your data is in your Postgres**, under a documented schema. Wire your own BI over it; the admin plane is one consumer, not the only one.
+- **If cog disappears**, your traces and the schema remain, the binary you deployed keeps working, and you can keep querying by SQL indefinitely. What stops is updates, support and new licences.
+- **If our licence server is down**, paid binaries honour their cached expiry until it lapses, with a grace window on the daily check-in so a transient outage can't trip a spurious downgrade.
+- **No phone-home for Free or air-gapped deployments.** Online paid tiers check in once daily carrying a licence id, an instance id and a version — no telemetry, no prompts, no user data.
+- **No hardware fingerprinting.** Licences bind to organisation, email domain and seat count — not to a machine.
+- **No obfuscation.** Enterprises auditing a tool that audits their staff need to read it; a source-access rider makes that contractual. The security argument is legal, not technical.
+- **No SOC 2 / ISO 27001 yet.** The evidence base is there — audit trail, RBAC, retention controls, lawful-basis notice — but the audit hasn't been done. It gets done when a customer is paying for the resulting paperwork.
 
 Pricing for Pro / Teams is deliberately deferred — see [getcog.ai/pricing](https://getcog.ai/pricing). The Free tier is perpetual, single-seat, BYO-keys; no signup or licence file required.
+
+---
+
+# What's being built — the event-log substrate
+
+Cog is mid-flight on a ground-up rewrite of its own foundations, and it's the reason the audit story above is worth taking seriously. It's summarised here because it changes what the product *is*, not just how fast it runs.
+
+**The idea in one line:** the log isn't a record of what the agent did — the log **is** what the agent did.
+
+Every action the runtime takes — every model call, every tool invocation, every sub-agent dispatch, every chain step — is recorded as a pair of events in a single, strictly ordered, append-only, hash-linked log. Every view you can ask for is then computed *from* that log: your session, the audit trail, the redacted transcript, the cost tally, the replay tape. Nothing is stored twice, and nothing can drift out of sync with anything else.
+
+Four things fall out of that, which no agent runtime you can currently buy offers:
+
+**Byte-exact replay.** Take a completed session and re-run it against its own recorded model and tool responses, and it reproduces byte-for-byte — including through the database, not just in memory. That's a regression gate on prompt changes and model upgrades: change a prompt, replay a thousand real sessions, see exactly what moved.
+
+**An audit trail you can verify rather than trust.** Each event is cryptographically bound to its predecessor, so the whole history is committed by a single value and any insertion, deletion, reorder or edit is detectable. Configure a signing key held outside the database and it becomes tamper-evident against someone who *has* database write access — the actual compliance threat model, rather than merely catching accidental corruption.
+
+**Real runs become training data.** Because the log is complete and schematised, trajectories fold into fine-tuning-shaped datasets at no extra cost.
+
+**Cross-model evaluation.** One task, several models, one diff.
+
+### Where it honestly stands
+
+We publish the gaps rather than rounding them up:
+
+| | Status |
+|---|---|
+| Byte-exact replay | **Working**, including through database persistence, across all 8 providers, property-tested. One residual: a pathologically large *incompressible* session stores a verifiable bound marker rather than the full tape. |
+| Verifiable audit trail | **Working.** Hash-linked and integrity-checked by default; **tamper-evident** only when you configure a signing key *and* keep the freshness anchor on storage a database-level attacker can't reach — realistic on managed Postgres, not on a single box. We don't use the stronger word for deployments that haven't earned it. |
+| Selective disclosure | Inclusion and consistency proofs are **built** — proving one interaction is in the sealed log without revealing the rest — but not yet the committed structure. |
+| Replay tooling & corpus export | **Built and tested, not yet released.** They ship when the substrate lands. |
+| Determinism | **Honest by design.** A published table ranks how reproducible each provider can be, and a run that *can't* be reproduced is reported as such rather than papered over. |
+
+**Why cog can do this and most tools can't:** it owns its agent loop end-to-end. No vendor SDK, no MCP runtime, no shelling out to someone else's agent binary. Tools are typed functions running *in* the process, so every effect crosses a boundary cog controls and can record. A stack whose tools live in separate processes structurally cannot replay byte-exact, because the boundary runs through something it doesn't own.
+
+This underpins a second use for the same binary: an **audit-and-replay substrate** for teams who need to prove what an agent did, priced on the audit surface rather than the chat surface. If that's you, [get in touch](mailto:support@getcog.ai).
 
 ## Authoring declarative gears
 
