@@ -452,18 +452,9 @@ bolted-on automation product.
 envelope the engine enforces before it runs.
 
 **A chain is an ordered composition of gears.** Each *step* is one named
-invocation of one gear. Its output lands in a run namespace that later steps
-read from:
-
-```
-.trigger.body           what fired the run
-.<step-name>.output     an earlier step's parsed output
-.<step-name>.status     "ok" | "error"
-.secret.<NAME>          resolved at render time, never written to a trace
-```
-
-Forward references are rejected at load time, so a chain that reads a step
-which hasn't run yet fails to load rather than failing in production.
+invocation of one gear, and its output becomes available to the steps after
+it — the wiring is covered in detail
+[below](#how-the-output-of-one-gear-becomes-the-input-of-the-next).
 
 **The `reason` gear is the hinge.** It is *a gear like any other* — it just
 happens to invoke a model. Give it `{instructions, data, response_schema}`
@@ -480,6 +471,104 @@ its own existing tier, under its own envelope, through the same dispatch
 chokepoint. A chain cannot smuggle a capability into a context that wasn't
 already allowed it — and every gear call inside a run is stamped with the
 run's id, so one SQL query reconstructs the whole thing.
+
+### How the output of one gear becomes the input of the next
+
+This is the mechanism that makes a chain deterministic, so it's worth
+spelling out concretely.
+
+Each step names a gear and supplies an `input:` block. That block is a
+**template rendered at dispatch time** against the run's namespace, and
+every earlier step's output is addressable in it **field by field**:
+
+```
+{{ .trigger.body.<field> }}        what fired the run
+{{ .<step-name>.output.<field> }}  an earlier step's output, one field of it
+{{ .secret.<NAME> }}               resolved at render time, never written to a trace
+```
+
+So step 3 doesn't receive "whatever step 2 produced" as an opaque blob — the
+author wires **named field to named parameter**, and the loader refuses at
+load time if a step references one that hasn't run yet. The wiring is
+explicit, and a mistake in it is a startup error rather than a 3 a.m. one.
+
+For an ordinary gear, the shape of `output` is fixed by that gear's own
+contract: `pdf_extract` returns text, `gmail_send` returns a send result.
+Deterministic in, deterministic out.
+
+**The interesting case is where you need judgement.** That's the one place a
+chain could go non-deterministic — and it's exactly where the `reason` gear
+clamps it. `response_schema` is **required by default**, and the model's
+reply is validated against it *before the step returns*. Non-conforming
+output does not propagate; it's a step error. So the fields flowing into the
+next gear have a guaranteed shape even though a model produced them.
+
+Put together, it looks like this — a real three-step chain, messy input to
+typed decision to deterministic action:
+
+```yaml
+steps:
+  - name: extract                       # deterministic gear
+    gear: pdf_extract
+    input:
+      path: "{{ .trigger.body.pdf_path }}"
+
+  - name: summarise                      # the reasoning step
+    gear: reason
+    input:
+      instructions: |
+        Summarise this report for an executive audience.
+      data: "{{ .extract.output.text }}"      # <- output of step 1 in
+      response_schema:                        # <- the clamp
+        type: object
+        required: [subject, summary, recipients]
+        properties:
+          subject:    { type: string, minLength: 5, maxLength: 200 }
+          summary:    { type: string, minLength: 50 }
+          recipients:
+            type: array
+            minItems: 1
+            items: { type: string, format: email }
+      gear_subset: []                         # pure judgement, no tool use
+
+  - name: send                           # deterministic gear again
+    gear: gmail_send
+    input:
+      to:      "{{ .summarise.output.recipients }}"   # <- typed fields out
+      subject: "{{ .summarise.output.subject }}"
+      body:    "{{ .summarise.output.summary }}"
+```
+
+Read the middle step as a **shape adapter**. Unstructured PDF text goes in;
+an object with a validated `subject`, `summary` and `recipients` comes out;
+`gmail_send` receives ordinary typed parameters and has no idea a model was
+involved. The nondeterminism is confined to the *wording inside those
+fields*. It cannot change which fields exist, their types, or their
+constraints — `recipients` will be a non-empty array of things shaped like
+email addresses or the step fails and the value never reaches `gmail_send`.
+
+That confinement is the whole idea: **reasoning where you need it, typed
+plumbing everywhere else.** Constrain a field with an `enum` and the model
+*cannot* return a value outside it, so a routing decision is genuinely
+closed even though a model made it. Leave a field a bare `string` and it
+varies freely. You choose, field by field, which parts of the outcome are
+locked and which are allowed to be prose.
+
+**When a provider fails to honour the schema**, the gear retries with a
+budget scaled to how well that provider supports structured output — none
+for providers with native JSON Schema, more for weaker ones — and every run
+records whether the model conformed first time, how many retries it took,
+and what the violations were. Schema failures are visible operational data,
+not a silent fallback to something unshaped.
+
+> **One honest limit.** Cog does not statically prove that step 2's output
+> schema satisfies step 3's declared input — there's no whole-chain type
+> check at load time. What is checked at load is that every gear exists and
+> that no step reads a step that hasn't run; what is enforced at run time is
+> the reasoning step's own output schema. In practice that covers the case
+> that actually breaks workflows — a model returning something unexpected —
+> but wiring the wrong field to the wrong parameter is still an authoring
+> error you find by running the chain.
 
 ### Determinism is a dial you set, not a property you hope for
 
