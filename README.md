@@ -112,7 +112,7 @@ boundary that creates the problem:
 | Tools can reach anything the process can | Gears **cannot reach raw filesystem, subprocess or network primitives at all.** Those live behind an internal `effect` package and are unexported at its boundary — the Go compiler refuses the import. |
 | Enforcement drifts over time | That boundary is a **build gate**, not a review convention. A guard fails the build on any new raw import, and it currently reports **zero exceptions** across the whole gear surface. |
 | The audit records intent, not effect | Every effect passes one dispatch chokepoint that writes an event **before** the call and another **after** it. The log records what happened, not what was requested — which is also precisely what makes replay work. |
-| Tool definitions can shift under you | The gear set is fixed at compile time. What you audited is what runs. |
+| Tool definitions can shift under you | **All executable code is fixed at compile time** — cog loads no third-party code at runtime, ever. You can add declarative gears (YAML) without recompiling, but those load *data, not code*: each runs the same engine-owned, code-reviewed handler inside an envelope validated when the file loads. The inventory can grow; the code that executes it cannot. |
 | Credentials spread across servers | One process, one credential surface, with secret-shaped strings scrubbed on the write path. |
 
 There is deliberately **no general `bash` gear**, either. Shell access was
@@ -287,7 +287,7 @@ directory:
 
 ```bash
 mkdir cog && cd cog
-docker run --rm -it -v $(pwd):/setup greyassoc/cog-installer:latest
+docker run --rm -it -v $(pwd):/setup greyassoc/cog-installer:v0.4.0
 docker compose up -d
 ```
 
@@ -300,10 +300,16 @@ wired in automatically by the installer if you supply a Discord
 bot token:
 
 ```bash
-docker pull greyassoc/cogai-discord:latest
+docker pull greyassoc/cogai-discord:v0.4.0
 ```
 
 All three images publish multi-arch (`linux/amd64` + `linux/arm64`).
+
+> **Pin the version, don't track `latest`.** Every command here names an
+> explicit tag on purpose. This page argues that a tool you audited should be
+> the tool that runs; a floating tag gives away exactly that property. For
+> production, go further and pin the digest —
+> `greyassoc/cogai@sha256:<digest>` — which is immutable by construction.
 
 ### Hand-rolled compose (advanced)
 
@@ -314,7 +320,7 @@ for the required env vars (Telegram token, allowed user IDs, at
 least one model provider key, Postgres URL).
 
 ```bash
-docker pull greyassoc/cogai:latest
+docker pull greyassoc/cogai:v0.4.0
 ```
 
 ### Native installer (no Docker prerequisite)
@@ -363,7 +369,7 @@ The principle, from `TIERS.md §1`: **never gate things that make cog useful as 
 | **Seats** | 1 | 1 | unlimited |
 | **All 8 model providers** | ✓ | ✓ | ✓ |
 | **All models, no token markup** | ✓ | ✓ | ✓ |
-| **All 89 built-in gears** | ✓ | ✓ | ✓ |
+| **All ~100 built-in gears** | ✓ | ✓ | ✓ |
 | **All 37 built-in agents** | ✓ | ✓ | ✓ |
 | **All 11 built-in skills** | ✓ | ✓ | ✓ |
 | **Persistent pgvector memory** | ✓ | ✓ | ✓ |
@@ -399,7 +405,7 @@ Tier is resolved **only** from an Ed25519-signed licence file, verified locally 
 
 ### Free is a credible standalone product
 
-Free isn't a teaser. You get a real coding agent that holds its own on the coder-review-coder loop, **all** model providers (BYO keys, no token markup), persistent memory across restarts, cron, plan mode, 37 built-in agents, 89 typed gears, 11 skills, and 30-day forensic-grade audit retention. Everything you need to ship one project end-to-end, perpetually, without giving us an email address.
+Free isn't a teaser. You get a real coding agent that holds its own on the coder-review-coder loop, **all** model providers (BYO keys, no token markup), persistent memory across restarts, cron, plan mode, 37 built-in agents, ~100 typed gears, 11 skills, and 30-day forensic-grade audit retention. Everything you need to ship one project end-to-end, perpetually, without giving us an email address.
 
 ---
 
@@ -1013,6 +1019,7 @@ an integration layer. **No gear is tier-gated** — every one in the binary is a
 | `code_path` | Find a reference path between two symbols. |
 | `code_callers_global` / `code_impact_global` / `code_path_global` | Same three queries across the cross-project index. Operator opt-in. |
 | `code_exec` | Execute a snippet (Python or JavaScript) via the provider's native code execution where available. 30s cap locally. |
+| `sandbox_exec` | Run a command inside an OS-level sandbox (nsjail / bubblewrap where present), under the operator's program allowlist. |
 
 #### Web
 

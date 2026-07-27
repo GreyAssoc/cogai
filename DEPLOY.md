@@ -7,7 +7,7 @@
 >
 > If you just want cog running and don't need to peek under the
 > hood: download the installer for your OS from
-> [GitHub Releases](https://github.com/GreyAssoc/cog/releases) and
+> [GitHub Releases](https://github.com/GreyAssoc/cogai/releases) and
 > skip to [§3](#3-discord-bot-setup) and [§2](#2-telegram-bot-setup)
 > only when the installer prompts you for the bot tokens.
 
@@ -159,35 +159,40 @@ for most use.
 
 The installer does this for you — but if you're doing it by hand:
 
+**cog's source is private, so there is no source tree to clone.** The
+supported way to get a deployment on disk is to run the installer once —
+it writes a complete `docker-compose.yml` + `.env` + `cog_mounts.yaml`
+into a directory you choose, and you edit those afterwards like any
+other compose stack:
+
 ```bash
 # 1. Pick an install directory.
 mkdir -p ~/cog && cd ~/cog
 
-# 2. Clone the cog source.
-git clone https://github.com/GreyAssoc/cog.git source
+# 2. Let the installer materialise the stack here.
+docker run --rm -it -v $(pwd):/setup greyassoc/cog-installer:v0.4.0
 
-# 3. Copy the env template.
-cp source/install/templates/env.tmpl .env
-
-# 4. Edit .env. At minimum, fill:
+# 3. Edit .env. At minimum:
 #    COG_GATEWAY_TELEGRAM_TOKEN, COG_GATEWAY_ALLOWED_USER_IDS,
 #    one provider key, COG_GATEWAY_USER_EMAIL,
-#    COG_HOST_WORKSPACE=/absolute/path/to/cog/workspace,
-#    COG_SOURCE_DIR=/absolute/path/to/cog/source
+#    COG_HOST_WORKSPACE=/absolute/path/to/cog/workspace
 
-# 5. Copy the compose template, substituting in your choices.
-#    (The installer's materialize.go does this via go/template.)
-cp source/install/templates/docker-compose.yml docker-compose.yml
-# Edit out the {{ if .EnableDiscord }} / {{ end }} blocks if you're
-# Telegram-only; uncomment client mounts if applicable.
+# 4. Edit docker-compose.yml if needed — drop the Discord service if
+#    you're Telegram-only, add client mounts if applicable.
 
-# 6. Build + run.
+# 5. Run.
 mkdir -p workspace
-docker compose up -d --build
+docker compose up -d
 
-# 7. Watch the gateway boot.
+# 6. Watch the gateway boot.
 docker compose logs -f gateway
 ```
+
+From here on the stack is ordinary Docker Compose; nothing about it
+depends on cog's source. If you want to author the compose file from
+scratch instead, the images and their environment contract are
+documented in §7 and on
+[Docker Hub](https://hub.docker.com/r/greyassoc/cogai).
 
 When you see `gateway listening` / `polling Telegram` / similar
 without an error, message `/help` to your bot.
@@ -366,7 +371,10 @@ The defaults above are tuned for a single-operator pilot. Before
 exposing the bot to other users (i.e. before Teams), walk
 the production checklist in [`docs/runbook.md`](./docs/runbook.md):
 
-- `COG_BASH_REQUIRE_ALLOWLIST=true`
+- `COG_BASH_REQUIRE_ALLOWLIST=true` — despite the name, this no longer
+  gates a `bash` gear (there isn't one). It constrains which *programs*
+  the typed subprocess gears may invoke — `git`, the language toolchains,
+  the sandboxer — matched by base name against `COG_BASH_ALLOWLIST`.
 - `COG_GATEWAY_FORMAT=html`
 - `PolicyFailClosed=true`
 - `COG_MASTER_FORCE_SECURE_COOKIES=true` (when running cog-master)

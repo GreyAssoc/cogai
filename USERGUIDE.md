@@ -257,8 +257,10 @@ Run `/skills` in Telegram to see what's currently loaded.
 ## 7. Creating a custom gear
 
 **Gears** are typed tools the agent loop can call: `read`, `write`,
-`bash`, `fetch`, `web_search`, etc. Most users don't need to
-author gears (the 70+ built-ins cover most needs), but if you have
+`fetch`, `web_search`, `git`, etc. (There is no general `bash` gear —
+shell access was removed from the default surface; subprocess-spawning
+gears run under an operator allowlist.) Most users don't need to author
+gears (the ~100 built-ins cover most needs), but if you have
 an internal API or workflow worth integrating, you can ship a
 declarative HTTP gear in YAML.
 
@@ -338,18 +340,18 @@ By default `docker-compose.yml` references `:latest`. To pin
 # docker-compose.yml
 services:
   gateway:
-    image: greyassoc/cogai:v0.3.16   # ← change here
+    image: greyassoc/cogai:v0.4.0    # ← change here
 ```
 
 Then `docker compose pull && docker compose up -d --force-recreate`.
 
 ### Watching for new releases
 
-- **Source:** https://github.com/GreyAssoc/cog/releases — every tag
+- **Source:** https://github.com/GreyAssoc/cogai/releases — every tag
 - **Mirror (binaries + signed SHA256SUMS):**
   https://github.com/GreyAssoc/cogai/releases — every tag
 - **Docker Hub:**
-  - `greyassoc/cogai:v0.3.X` — Telegram gateway
+  - `greyassoc/cogai:vX.Y.Z` — Telegram gateway (pin a version, not `latest`)
   - `greyassoc/cogai-discord:v0.3.X` — Discord gateway
   - `greyassoc/cog-installer:v0.3.X` — guided installer
 
