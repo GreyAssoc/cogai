@@ -130,6 +130,53 @@ and compile in. That is a build-time bridge, not a runtime one. **Cog will
 not speak MCP at runtime** — doing so would forfeit every guarantee in the
 section above.
 
+### One capability set, two ways to drive it
+
+The tool boundary above buys something beyond safety: because every
+capability is a typed function inside one process, **composing capabilities
+needs no second system.**
+
+Most stacks that do real work end up running two. An agent framework for the
+ambiguous parts, and a workflow tool — Zapier, n8n, Airflow, a pile of cron
+and glue — for the repeatable ones. That means two sets of integrations to
+build, two trust domains to reason about, two audit trails that don't line
+up, and a seam between them where the credentials live.
+
+Cog has one capability set and two ways to drive it:
+
+| | **Agent loop** | **Chain** |
+|---|---|---|
+| Who decides the sequence | The model, at runtime | You, in YAML, ahead of time |
+| Right for | Ambiguous work — classify, debug, draft, investigate | Repeatable work — the Monday-morning digest |
+| Cost shape | N turns of reasoning | Exactly the model calls you placed |
+| Started by | A message | Webhook, schedule, or an agent mid-conversation |
+
+Both call **the same gears**. A gear you write once is available to the
+model *and* as a step in a workflow — there is no integration layer to build
+separately, secure separately, or audit separately.
+
+Both run inside **the same enforcement boundary**. The chain executor is not
+a privileged orchestrator sitting above the permission system: every step
+runs at the gear's own tier, through the same dispatch chokepoint, under the
+same envelope. A chain cannot reach anything the agent couldn't.
+
+Both write to **the same event log**. So a workflow run is replayable and
+verifiable in exactly the way a conversation is — same hash chain, same
+byte-exact guarantee, one query to reconstruct a run. In a two-system setup
+the automation half is usually the part with no meaningful audit trail at
+all; here it's the same trail.
+
+The piece that joins them is a gear called `reason`, which takes
+instructions plus a JSON schema and returns judgement in a shape you
+specified. Because it's an ordinary gear, **intelligence becomes a node you
+place** rather than the thing driving everything — you spend a model call
+where the problem is genuinely ambiguous and run deterministic steps
+everywhere else. How deterministic a given workflow is ends up being a
+design decision you make per field, not a property you hope for.
+
+→ Full treatment, including the determinism dial and the resource bounds, in
+[Chains](#2-chains--declarative-workflows-where-every-node-can-think).
+
 ### Where this honestly stands
 
 The substrate is mid-flight. What holds today versus what doesn't:
@@ -425,24 +472,14 @@ makes LLM judgement a **node in the graph** rather than the thing that
 drives the graph. You place intelligence exactly where the problem needs it
 and nowhere else.
 
-**Chains introduce no new trust tier.** This is the load-bearing property:
-the chain executor is not a privileged orchestrator sitting above the
-permission system. Every gear a chain step calls runs at its own existing
-tier, under its own envelope, through the same dispatch chokepoint described
-in [why there is no MCP runtime](#why-there-is-no-mcp-runtime). A chain
-cannot smuggle a capability into a context that wasn't already allowed it.
-
-Three things follow, and they're the real payoff:
-
-- **Write a gear once, use it in both modes.** Anything the agent can call,
-  a chain can call. There is no separate "integration layer" to build,
-  secure and audit.
-- **A chain run is auditable exactly like a chat session**, because it's
-  made of the same events. Every gear call inside a run is stamped with the
-  run's id, so one SQL query reconstructs the whole thing — and the same
-  replay guarantees apply.
-- **Nothing new to secure.** The enforcement boundary you already trust for
-  the agent loop is the one chains run inside.
+**Chains introduce no new trust tier**, which is what makes the
+[one-capability-set property](#one-capability-set-two-ways-to-drive-it)
+hold in practice. The chain executor is not a privileged orchestrator
+sitting above the permission system: every gear a chain step calls runs at
+its own existing tier, under its own envelope, through the same dispatch
+chokepoint. A chain cannot smuggle a capability into a context that wasn't
+already allowed it — and every gear call inside a run is stamped with the
+run's id, so one SQL query reconstructs the whole thing.
 
 ### Determinism is a dial you set, not a property you hope for
 
