@@ -1,0 +1,78 @@
+# cog — hand-rollable Docker Compose stack
+#
+# This is the installer's generated compose file with the templating
+# resolved, so you can use it directly. Two ways in:
+#
+#   Guided:     docker run --rm -it -v $(pwd):/setup greyassoc/cog-installer:v0.4.0
+#   By hand:    copy this file + env.example (as .env) into a directory,
+#               fill in .env, then `docker compose up -d`
+#
+# Pin the image tag. `latest` is deliberately not used — cog's whole
+# argument is that the thing you audited should be the thing that runs,
+# and a floating tag gives that away. For production, pin the digest:
+#   image: greyassoc/cogai@sha256:<digest>
+
+services:
+  gateway:
+    image: greyassoc/cogai:v0.4.0
+    env_file: .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      # --- Labelled mounts -------------------------------------------
+      # What the agent can see. The installer generates these from
+      # cog_mounts.yaml; by hand, list them here directly.
+      # Format: '<host path>:<container path>:<ro|rw>'
+      - './workspace:/workspace:rw'
+      # - '/home/you/projects:/projects:ro'
+      # - '/home/you/documents:/documents:ro'
+      #
+      # --- Extension surfaces ----------------------------------------
+      # skills/custom  overrides the 11 built-in skills and adds new ones
+      # gears/         Tier-1 declarative HTTP gear YAMLs (see AUTHORING.md)
+      # agents/        markdown-with-frontmatter custom agent definitions
+      #
+      # agents/ is :rw so `/agent create` can write a file that mirrors
+      # the runtime store. skills + gears stay :ro — operator-authored
+      # only; the gateway never edits them.
+      - './skills/custom:/root/.cog/skills:ro'
+      - './gears:/root/.cog/gears:ro'
+      - './agents:/root/.cog/agents:rw'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # --- Discord (optional second channel, Free tier) -------------------
+  # Uncomment and set DISCORD_BOT_TOKEN in .env. Runs alongside the
+  # Telegram gateway and shares the same Postgres trace store.
+  #
+  # gateway-discord:
+  #   image: greyassoc/cogai-discord:v0.4.0
+  #   env_file: .env
+  #   extra_hosts:
+  #     - "host.docker.internal:host-gateway"
+  #   volumes:
+  #     - './workspace:/workspace:rw'
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   restart: unless-stopped
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: cog
+      POSTGRES_PASSWORD: cog
+      POSTGRES_DB: cog
+    volumes:
+      - cog_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cog"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  cog_pgdata:

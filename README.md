@@ -264,13 +264,24 @@ Treat it as evidence of care, not as an external attestation.
   own model keys, and the Free tier needs no licence file, no signup and no
   account.
 
-> **On lock-in, precisely.** Cog is closed-source and paid tiers are gated
-> by a signed licence, so this isn't open source and we won't pretend
-> otherwise. What you do get is **data portability**: your traces live in
-> your database under a schema we publish, you bring your own model keys
-> with no markup, there's no hardware fingerprinting, and if cog disappeared
-> tomorrow the binary you deployed keeps running and the SQL keeps
-> answering.
+> **On lock-in, precisely.** The lock-in that usually bites an AI product is
+> **model-vendor lock-in** — your prompts, your tooling and your costs
+> welded to one lab's API. Cog has none of it: you bring your own keys for
+> **all 8 providers** (Anthropic, OpenAI, Gemini, DeepSeek, xAI, Qwen,
+> Moonshot, z.ai), switch per message with `/provider use <name>`, and pay
+> them directly with no markup and no metering in between. Provider and
+> model are **never** gated by tier. Point it at Ollama or vLLM and there's
+> no external dependency at all.
+>
+> You also get **data portability**: your traces live in your own Postgres
+> under a schema we publish, there's no hardware fingerprinting, and if cog
+> disappeared tomorrow the binary you deployed keeps running and the SQL
+> keeps answering.
+>
+> What we won't claim: cog itself is closed-source and paid tiers are gated
+> by a signed licence. That's a commitment to *us* as a vendor, and calling
+> it anything else would be dishonest. What it isn't is a commitment to a
+> model vendor — which is the one you can't undo later.
 
 ---
 
@@ -378,6 +389,7 @@ The principle, from `TIERS.md §1`: **never gate things that make cog useful as 
 | **Cancellation (`/stop`)** | ✓ | ✓ | ✓ |
 | **Streaming progress** | ✓ | ✓ | ✓ |
 | **Auto-compaction** | ✓ | ✓ | ✓ |
+| **HTTP chat endpoint** (`POST /api/v1/chat`) | ✓ | ✓ | ✓ |
 | **Persona overlays (8 × M/F/N)** | ✓ | ✓ | ✓ |
 | **Coder-review-coder loop** | ✓ | ✓ | ✓ |
 | **Custom gears beyond the built-ins** | 3 | **unlimited** | **unlimited** |
@@ -396,7 +408,7 @@ The principle, from `TIERS.md §1`: **never gate things that make cog useful as 
 | **GDPR Art. 15 subject-access endpoint** | ✗ | ✗ | **✓** |
 | **Reporting endpoints (usage / violations / cost outliers / transparency)** | ✗ | ✗ | **✓** |
 | **Trace retention** | 30 days | 365 days | configurable |
-| **Channels** | Telegram + Discord | + WhatsApp, HTTP API, operator dashboard | + on-prem connector |
+| **Channels** | Telegram + Discord + **HTTP API** | + WhatsApp, operator dashboard | + on-prem connector |
 | **Source-access rider (audit the engine under NDA)** | ✗ | ✗ | **✓** |
 | **No phone-home** | ✓ | daily check-in (licence_id only) | configurable: online or fully offline |
 | **Licence file required?** | no | yes (Ed25519-signed) | yes (Ed25519-signed, org-bound) |
@@ -406,6 +418,23 @@ Tier is resolved **only** from an Ed25519-signed licence file, verified locally 
 ### Free is a credible standalone product
 
 Free isn't a teaser. You get a real coding agent that holds its own on the coder-review-coder loop, **all** model providers (BYO keys, no token markup), persistent memory across restarts, cron, plan mode, 37 built-in agents, ~100 typed gears, 11 skills, and 30-day forensic-grade audit retention. Everything you need to ship one project end-to-end, perpetually, without giving us an email address.
+
+**Including the HTTP chat endpoint.** `POST /api/v1/chat` is on every tier,
+Free included:
+
+```bash
+curl -s localhost:8081/api/v1/chat \
+  -H "Authorization: Bearer $COG_HTTP_API_TOKEN" \
+  -d '{"prompt":"summarise the failing tests in ./api"}'
+# → {"session_id":"…","agent":"general","text":"…"}
+```
+
+Echo the `session_id` back on the next call and you have a conversation.
+It is deliberately ungated: every other channel routes your prompts
+through somebody else's servers, so putting the one that doesn't behind
+a paywall would make *local-first* a paid feature. What paid tiers gate
+is coordinated execution and governance — not the ability to send a
+message.
 
 ---
 
@@ -718,13 +747,13 @@ The enforcement underneath is engine-side and the same at every tier: budgets ar
 ## 6. Interfaces, channels and retention
 
 - **WhatsApp** — Pro is the first tier with it. Meta charges per conversation above their free allowance, so the cost is wrapped into the subscription rather than pushed onto Free.
-- **HTTP API** — Bearer-token authenticated, per-source-IP rate limited *before* the token compare so brute-force attempts don't exercise the auth path at line rate.
+- **HTTP API** — agent and team *management* endpoints. Bearer-token authenticated, per-source-IP rate limited *before* the token compare so brute-force attempts don't exercise the auth path at line rate. (The conversation endpoint is free on every tier — see below.)
 - **Operator dashboard** — a server-rendered view of your agents, teams and recent dispatches, embedded in the gateway binary. Vanilla HTML5 + CSS3, no framework.
 - **Chain webhook endpoint** — the HTTP trigger surface for chains.
 - **`cog` CLI** — usage reporting and licence management.
 - **365-day trace retention**, up from 30.
 
-> **Built vs. planned, stated plainly.** The three shipping channel hosts are **Telegram, Discord and WhatsApp**. Web chat, an IDE host and the on-prem connector are on the roadmap — their gates exist, their host binaries don't yet. They are not in your download today.
+> **Built vs. planned, stated plainly.** The shipping channels are **Telegram, Discord, WhatsApp and the HTTP API**. A browser web-chat UI, an IDE host and the on-prem connector are on the roadmap — their gates exist, their host binaries don't yet. They are not in your download today.
 
 ---
 

@@ -189,10 +189,21 @@ docker compose logs -f gateway
 ```
 
 From here on the stack is ordinary Docker Compose; nothing about it
-depends on cog's source. If you want to author the compose file from
-scratch instead, the images and their environment contract are
-documented in §7 and on
-[Docker Hub](https://hub.docker.com/r/greyassoc/cogai).
+depends on cog's source.
+
+**Prefer to skip the installer entirely?** Ready-to-edit files live in
+[`templates/`](./templates) in this repo — a resolved
+`docker-compose.yml` (no Go templating left in it) and an annotated
+`env.example`:
+
+```bash
+mkdir -p ~/cog/workspace ~/cog/gears ~/cog/agents ~/cog/skills/custom
+cd ~/cog
+curl -fsSLO https://raw.githubusercontent.com/GreyAssoc/cogai/main/templates/docker-compose.yml
+curl -fsSL  https://raw.githubusercontent.com/GreyAssoc/cogai/main/templates/env.example -o .env
+# edit .env: bot token, allowed user IDs, at least one provider key
+docker compose up -d
+```
 
 When you see `gateway listening` / `polling Telegram` / similar
 without an error, message `/help` to your bot.
