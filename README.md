@@ -166,16 +166,45 @@ byte-exact guarantee, one query to reconstruct a run. In a two-system setup
 the automation half is usually the part with no meaningful audit trail at
 all; here it's the same trail.
 
-The piece that joins them is a gear called `reason`, which takes
-instructions plus a JSON schema and returns judgement in a shape you
-specified. Because it's an ordinary gear, **intelligence becomes a node you
-place** rather than the thing driving everything — you spend a model call
-where the problem is genuinely ambiguous and run deterministic steps
-everywhere else. How deterministic a given workflow is ends up being a
-design decision you make per field, not a property you hope for.
+#### How gears link deterministically — and where reasoning fits
 
-→ Full treatment, including the determinism dial and the resource bounds, in
-[Chains](#2-chains--declarative-workflows-where-every-node-can-think).
+A chain links gears by **passing typed values**, not by handing the next
+step a blob of text and hoping. Each step names a gear and declares its
+input, and an earlier step's output is addressed **field by field** —
+`{{ .extract.output.text }}`. The author wires named field to named
+parameter, and a reference to a step that hasn't run is rejected when the
+chain loads, not when it fires.
+
+For an ordinary gear that's trivially deterministic: its output shape is
+fixed by its own contract. **The only place a chain can drift is where you
+need judgement — and that's exactly where the `reason` gear clamps it.**
+
+`reason` is an ordinary gear that happens to invoke a model. You give it
+instructions plus a `response_schema`, and its reply is **validated against
+that schema before the step returns**. Non-conforming output doesn't
+propagate — it's a step error. So the values arriving at the next gear are
+typed even though a model produced them:
+
+```
+pdf_extract  →  reason  →  gmail_send
+   text          { subject, summary, recipients }      typed parameters
+                 ↑ shape fixed by response_schema
+```
+
+Read the middle step as a **shape adapter**: unstructured text in, a
+validated object out, and `gmail_send` receives ordinary parameters with no
+idea a model was involved. Nondeterminism is confined to the *wording
+inside* those fields — it cannot change which fields exist, their types or
+their constraints. Constrain a field with an `enum` and the routing decision
+is genuinely closed even though a model made it.
+
+That confinement is the point: **reasoning where you need it, typed plumbing
+everywhere else** — about as close to deterministic outcomes as a system
+with a model in it can honestly get. And you decide, field by field, which
+parts are locked and which are free to be prose.
+
+→ Worked example, the determinism dial, retry behaviour and resource bounds
+in [Chains](#2-chains--declarative-workflows-where-every-node-can-think).
 
 ### Where this honestly stands
 
