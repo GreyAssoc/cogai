@@ -173,7 +173,9 @@ Treat it as evidence of care, not as an external attestation.
 - **~100 typed gears** — file I/O, code intelligence, git and build
   toolchains, sandboxed execution, web fetch and search, `.docx` /
   `.xlsx` / `.pdf` / `.pptx` read and write, Google Workspace, email,
-  memory, cron and async tasks. [Full catalogue below](#reference--the-full-catalogues).
+  memory, cron and async tasks. Every one is callable both by the agent
+  loop *and* as a step in a [chain](#2-chains--declarative-workflows-where-every-node-can-think).
+  [Full catalogue below](#reference--the-full-catalogues).
 - **37 built-in agents and 11 skills**, free on every tier — a flagship
   coding agent across 15 languages, research and writing specialists, and
   28 single-perspective code reviewers that Pro can run *as coordinated
@@ -383,27 +385,137 @@ The `subagent` gear dispatches a sub-agent **with its own context** from inside 
 
 ## 2. Chains — declarative workflows where every node can think
 
-The agent loop is the right primitive for **ambiguous** work. It's the wrong primitive for deterministic glue: *"every Monday at 09:00, summarise last week's tickets and post the digest"* shouldn't require you to sit in a chat session.
+The agent loop is the right primitive for **ambiguous** work: classify this
+email, debug this failure, draft this reply. It is the wrong primitive for
+deterministic glue. *"Every Monday at 09:00, summarise last week's tickets
+and post the digest"* shouldn't require you to sit in a chat session, and it
+shouldn't cost a fresh round of model reasoning to decide what it already
+knows it's doing.
 
-**Chains** are YAML workflow definitions that link gears together with templated data flow — plus the **`reason` gear**, which makes LLM judgement a first-class typed node rather than a bolted-on plugin.
+**Chains** are YAML workflow definitions that link gears together with
+templated data flow. Same gears, same permission model, same audit log — you
+just decide the sequence instead of letting the model decide it.
 
-| | Zapier | n8n | Cog chains |
+### How gears and chains fit together
+
+This is the part worth understanding, because it's why chains aren't a
+bolted-on automation product.
+
+**A gear is one typed capability.** One call, one schema, one permission
+envelope the engine enforces before it runs.
+
+**A chain is an ordered composition of gears.** Each *step* is one named
+invocation of one gear. Its output lands in a run namespace that later steps
+read from:
+
+```
+.trigger.body           what fired the run
+.<step-name>.output     an earlier step's parsed output
+.<step-name>.status     "ok" | "error"
+.secret.<NAME>          resolved at render time, never written to a trace
+```
+
+Forward references are rejected at load time, so a chain that reads a step
+which hasn't run yet fails to load rather than failing in production.
+
+**The `reason` gear is the hinge.** It is *a gear like any other* — it just
+happens to invoke a model. Give it `{instructions, data, response_schema}`
+and it returns JSON matching your schema. That single design choice is what
+makes LLM judgement a **node in the graph** rather than the thing that
+drives the graph. You place intelligence exactly where the problem needs it
+and nowhere else.
+
+**Chains introduce no new trust tier.** This is the load-bearing property:
+the chain executor is not a privileged orchestrator sitting above the
+permission system. Every gear a chain step calls runs at its own existing
+tier, under its own envelope, through the same dispatch chokepoint described
+in [why there is no MCP runtime](#why-there-is-no-mcp-runtime). A chain
+cannot smuggle a capability into a context that wasn't already allowed it.
+
+Three things follow, and they're the real payoff:
+
+- **Write a gear once, use it in both modes.** Anything the agent can call,
+  a chain can call. There is no separate "integration layer" to build,
+  secure and audit.
+- **A chain run is auditable exactly like a chat session**, because it's
+  made of the same events. Every gear call inside a run is stamped with the
+  run's id, so one SQL query reconstructs the whole thing — and the same
+  replay guarantees apply.
+- **Nothing new to secure.** The enforcement boundary you already trust for
+  the agent loop is the one chains run inside.
+
+### Determinism is a dial you set, not a property you hope for
+
+Most workflow tools with an "AI step" hand you a black box. Cog treats
+determinism as three separate questions, and a chain answers each one
+according to how *you* built it:
+
+| Dimension | The question | Why you care |
+|---|---|---|
+| **Path** | Does the same input run the same sequence of steps? | Cost predictability, failure-mode reasoning |
+| **Output** | Do the same inputs produce the same bytes? | Regression tests, idempotency, replay |
+| **Outcome** | Do the same inputs produce the same *business effect*? | The one anyone actually feels |
+
+| Chain shape | Path | Output | Outcome |
 |---|---|---|---|
-| Trigger → action graph | ✓ | ✓ | ✓ |
-| Self-hostable | ✗ | ✓ | ✓ |
-| LLM reasoning as a first-class node | ✗ (plugin) | ✗ (plugin) | **✓ (the `reason` gear)** |
-| Typed integrations + audit trail | ✓ | ⚠ | ✓ |
-| Visual editor | ✓ | ✓ | ✗ (YAML today) |
+| No `reason` steps at all | Fully | Deterministic bar external services | Fully |
+| `reason` + strict schema, no tool use | Fully | Shape locked, wording varies | Effectively — decisions are schema-bound |
+| `reason` + strict schema + nested tool use | Steps fixed, nested calls vary | Shape locked, wording varies | Mostly |
+| `reason` with schema opted out | Fully | Highly variable | Not guaranteed |
 
-**Three trigger types:** HTTP **webhook**, **schedule** (cron), and **agent dispatch** — an agent inside a chat can fire a chain mid-conversation.
+**The schema is the knob.** A field declared `enum: [escalate, close, reply]`
+*cannot* return anything else — validation refuses to propagate a
+non-conforming value downstream. A bare `type: string` can return whatever
+the model writes. So you lock the fields that drive downstream actions and
+let the human-readable narrative vary.
 
-**The `reason` gear** takes `{instructions, data, response_schema, gear_subset, max_turns}` and returns JSON matching your schema. It's the universal adapter between steps whose formats don't line up, and the classify / synthesise / summarise node when you need judgement.
+Concretely: three runs of an unschematised classifier might return
+`{"decision":"escalate"}`, then unparseable prose, then
+`{"verdict":"ESCALATE"}` — breaking downstream steps three different ways.
+Bind the schema and the routing is locked to *3 decisions × 3 teams ×
+5 priorities = 45 possible outcomes*, forever, while the rationale wording
+stays free.
 
-**The determinism contract is what makes this operable.** An unschematised LLM step is a liability: three runs of the same ticket might return `{"decision":"escalate"}`, then unparseable prose, then `{"verdict":"ESCALATE"}` — each breaking downstream steps differently. Bind a `response_schema` and the *routing* is locked even though the wording varies: 3 decisions × 3 teams × 5 priorities is 45 possible outcomes, and the model **cannot** emit anything else. Schema violations are a classified retry, not silent bad data.
+**And you write that schema once.** Providers vary enormously in schema
+support — native JSON Schema on some, tool-shaped schemas on others,
+`json_object`-only or prompt-only on the rest. The `reason` gear looks up the
+active provider and emits the right wire format for it, with automatic
+retry when a weaker provider drifts. You author one `response_schema`; the
+gear handles the per-provider reality.
 
-**Operator-grade by construction:** every run gets a `chain_run_id` stamped on every gear call inside it, so one SQL query reconstructs the entire run. Per-chain wall-clock timeout, gear-call cap and cost cap mean a runaway chain self-terminates. Webhook auth, an env-var allowlist, and a reporting layer that deliberately doesn't expose raw payloads round it out.
+### Triggers, and how a chain gets started
 
-Chains run **in-process** — outputs flow through memory, not HTTP. Scale horizontally by running multiple cog instances against one Postgres.
+- **Webhook** — HMAC-signed by default, constant-time verified, and a failed
+  auth returns 401 with no body. Compatible with how GitHub, Stripe and
+  Shopify already sign.
+- **Schedule** — cron, using the same scheduler as everything else.
+- **Agent dispatch** — an agent *inside a conversation* can fire a chain and
+  keep going. This is where the two modes compose: reason about a messy
+  situation in the agent loop, then hand the repeatable part to a chain that
+  does it the same way every time.
+
+### Bounded by construction
+
+Because a chain is operator-authored YAML that can run unattended, the
+limits are defaults rather than options:
+
+| Bound | Default | On hit |
+|---|---|---|
+| Wall-clock timeout | 300s | Run cancelled, remaining steps skipped, recorded as timed out |
+| Gear-call cap | 50 | The step that would exceed it is refused *before* dispatch |
+| Cost cap | $1 per run | Same — refused before spending, not detected after |
+
+An operator ceiling caps what any individual chain may ask for. Template
+access to environment variables is **empty by default** — a chain sees no
+env at all unless you allowlist specific names — because leaking a provider
+key into a trace through a template would be unrecoverable. Secrets resolve
+through the same path gears use and are never serialised into traces. A
+`reason` step inherits the caller's allowed gears and can be narrowed
+further per step; an empty tool list means no tool use at all, which is the
+safest configuration and worth using whenever the step is pure judgement.
+
+Chains execute **in-process** — outputs move through memory, not HTTP. Scale
+horizontally by running more cog instances against the same Postgres.
 
 ## 3. Unlimited extensibility
 
@@ -698,7 +810,10 @@ Same-name skills in a higher layer fully replace lower layers — operators over
 
 ### Gears (~100)
 
-Gears are typed Go functions the agent dispatches as tools. **No gear is tier-gated** — every one in the binary is available on every tier including Free. Pro+ unlocks the *quota for adding your own* (Free 3, Pro unlimited) plus the orchestration gears.
+Gears are typed Go functions the agent dispatches as tools — and the same
+gears are the building blocks of [chains](#2-chains--declarative-workflows-where-every-node-can-think),
+so anything here can be composed into a declarative workflow without writing
+an integration layer. **No gear is tier-gated** — every one in the binary is available on every tier including Free. Pro+ unlocks the *quota for adding your own* (Free 3, Pro unlimited) plus the orchestration gears.
 
 > Looking for `bash`? There isn't one — see [why there is no MCP runtime](#why-there-is-no-mcp-runtime) for the reasoning. Sandboxed execution is available via `code_exec` / `sandbox_exec`.
 
