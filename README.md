@@ -1,11 +1,9 @@
 # cog — public distribution
 
-> A Go-native AI agent system you run yourself, built on an append-only,
-> hash-linked event log. This is the public distribution surface: install
-> instructions, the gear-authoring contract, and a
-> [Releases page](https://github.com/GreyAssoc/cogai/releases) for the
-> compiled binaries. The source lives in a private dev repo; you don't
-> need it to run cog Free.
+>Go-native AI agent system you run yourself.
+>No model-vendor lock-in: bring your own keys for any of 8 providers
+>(Anthropic, OpenAI, Gemini, DeepSeek, xAI, Qwen, Moonshot, z.ai) and switch per message.
+>Your traces stay in your Postgres.
 
 ---
 
