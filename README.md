@@ -270,8 +270,8 @@ Treat it as evidence of care, not as an external attestation.
 > **all 8 providers** (Anthropic, OpenAI, Gemini, DeepSeek, xAI, Qwen,
 > Moonshot, z.ai), switch per message with `/provider use <name>`, and pay
 > them directly with no markup and no metering in between. Provider and
-> model are **never** gated by tier. Point it at Ollama or vLLM and there's
-> no external dependency at all.
+> model are **never** gated by tier — the only thing you're tied to is
+> whichever lab you chose this week, and changing that is one command.
 >
 > You also get **data portability**: your traces live in your own Postgres
 > under a schema we publish, there's no hardware fingerprinting, and if cog
@@ -857,7 +857,7 @@ Cog in a workplace is a monitoring system, and the product treats that as a lega
 |---|---|
 | **Single-operator pilot** | One gateway + one Postgres + Telegram. What the project itself runs daily. Free is sufficient. |
 | **Multi-user self-hosted** | Gateway + Postgres + admin plane with a signed licence, OIDC bridge, production posture behind a TLS-terminating proxy |
-| **Air-gapped** | Self-hosted admin plane + sub-cogs + a local model (Ollama / vLLM with an Anthropic-format adapter). Licence delivered on signed media. **Zero network egress.** |
+| **Air-gapped** | **Not supported yet.** Cog makes no phone-home calls of its own and a licence can be delivered offline, but there is no self-hosted model path today — your model provider stays an external dependency. Local-model support (Ollama / vLLM) is on the roadmap, not in the binary. |
 | **Hosted SaaS** | **Not implemented.** Self-host today. |
 
 ## What an enterprise should also know
