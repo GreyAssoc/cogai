@@ -45,6 +45,91 @@ every effect crosses a boundary cog controls and can record. A stack whose
 tools live in separate processes cannot replay byte-exact: the boundary
 runs through something it doesn't own.
 
+
+### Why there is no MCP runtime
+
+Cog's tools are typed Go functions compiled into the binary, not
+separate-process servers. That is the decision everything above rests on,
+so it's worth explaining rather than asserting.
+
+**What MCP gets right.** The Model Context Protocol is language-agnostic,
+hot-pluggable, and has by far the largest tool ecosystem. If your priority
+is breadth quickly, it is the correct choice and cog is not competing with
+it on that axis.
+
+**The structural gap.** MCP standardises *what the model may call*. It does
+not standardise *what the callee may then do*. A server is an ordinary
+process on your machine: it can read files, open sockets, and spawn shells.
+The host says "call `search_files` with these arguments"; the server decides
+what `search_files` actually does. There is no in-band way for a host to say
+*"this tool may read `~/project` and nothing else"* and have that enforced.
+You are trusting the server's author, and the protocol has no vocabulary for
+distrusting them.
+
+Three consequences follow from the architecture itself. They are not bugs to
+be patched — they are what a process boundary means:
+
+- **Permissions are coarse and advisory.** Consent is granted per tool, or
+  per session, not per call with its actual arguments. Once a tool is
+  approved, every later invocation inherits that approval whatever the
+  arguments are.
+- **The audit trail records intent, not effect.** The host can log the call
+  and the value returned. What the server *did* — which files it touched,
+  which hosts it contacted, which credentials it used — happened somewhere
+  the host cannot observe. For a compliance reader that is the difference
+  between "the model asked for X" and "X is what occurred."
+- **Byte-exact replay is impossible.** You cannot tape an effect boundary
+  that runs through a process you don't own. Everything in the section above
+  — replay as a regression gate, a verifiable log, trajectories as
+  evaluation data — requires that every effect cross a boundary the runtime
+  controls.
+
+**And four practical risks** that are *not* inherent to the protocol —
+careful hosts and operators can mitigate all of them, and the spec has grown
+to help — but which are common in real deployments and worth naming:
+
+- **Installing a server is arbitrary code execution.** The usual flow runs
+  third-party code with your user's privileges, unsandboxed. The tool you
+  audited and the code that ships next week are not the same artefact.
+- **Tool descriptions are model-visible text.** A server's own metadata
+  enters the model's context, so a malicious or compromised server can carry
+  prompt injection in its description — and can influence how the model uses
+  *other* servers' tools sharing that context.
+- **Definitions can change after you consented.** Approval is a moment;
+  the served definition is a variable. Nothing structurally binds the tool
+  you approved to the tool you later call.
+- **Credentials spread out.** Servers commonly hold their own API tokens and
+  OAuth grants, so every added server is another place secrets live and
+  another independent blast radius.
+
+**How cog answers this.** Not by being more careful — by removing the
+boundary that creates the problem:
+
+| The problem | Cog's answer |
+|---|---|
+| The server decides what a tool does | A gear is a Go function in this binary. No separate process, no install step that runs someone else's code. |
+| Approval is per-tool, not per-call | Every gear declares a **permission envelope the engine enforces before it is invoked**, evaluated against the actual arguments of that call. |
+| Tools can reach anything the process can | Gears **cannot reach raw filesystem, subprocess or network primitives at all.** Those live behind an internal `effect` package and are unexported at its boundary — the Go compiler refuses the import. |
+| Enforcement drifts over time | That boundary is a **build gate**, not a review convention. A guard fails the build on any new raw import, and it currently reports **zero exceptions** across the whole gear surface. |
+| The audit records intent, not effect | Every effect passes one dispatch chokepoint that writes an event **before** the call and another **after** it. The log records what happened, not what was requested — which is also precisely what makes replay work. |
+| Tool definitions can shift under you | The gear set is fixed at compile time. What you audited is what runs. |
+| Credentials spread across servers | One process, one credential surface, with secret-shaped strings scrubbed on the write path. |
+
+There is deliberately **no general `bash` gear**, either. Shell access was
+removed from the default surface: every subprocess a gear spawns now goes
+through the audited chokepoint under an operator allowlist.
+
+**What this costs you, plainly.** You cannot point cog at an arbitrary MCP
+server and have it work. That is a real loss and we are not going to pretend
+it isn't — the trade is **less ecosystem, more enforceable safety**. Two
+things soften it: declarative gears let you add HTTP and webhook tools as
+validated YAML against a [published schema](#authoring-declarative-gears),
+no compiler needed; and an `mcp-to-gear` converter on the roadmap reads an
+existing MCP server's tool list and generates auditable Go for you to review
+and compile in. That is a build-time bridge, not a runtime one. **Cog will
+not speak MCP at runtime** — doing so would forfeit every guarantee in the
+section above.
+
 ### Where this honestly stands
 
 The substrate is mid-flight. What holds today versus what doesn't:
@@ -59,15 +144,9 @@ The substrate is mid-flight. What holds today versus what doesn't:
 
 ## Enforcement at the boundary
 
-The second thing worth knowing before the feature list: **cog refuses
-rather than degrades.**
+The tool boundary above is one half. The other half is what happens at
+runtime once a call is permitted: **cog refuses rather than degrades.**
 
-- **Tools are typed, permissioned Go functions.** Each declares a
-  permission envelope the engine enforces *before* invoking it — not a
-  convention, a type. Gears cannot reach raw filesystem, subprocess or
-  network primitives at all; every external effect routes through a single
-  dispatch chokepoint, and that's enforced by the package boundary rather
-  than by lint or review.
 - **Budgets are compared as integers in micro-USD**, so floating-point
   drift can't slip a request past a spend ceiling. NaN or infinity in a
   budget column refuses the request instead of degrading to "no cap", and
@@ -621,7 +700,7 @@ Same-name skills in a higher layer fully replace lower layers — operators over
 
 Gears are typed Go functions the agent dispatches as tools. **No gear is tier-gated** — every one in the binary is available on every tier including Free. Pro+ unlocks the *quota for adding your own* (Free 3, Pro unlimited) plus the orchestration gears.
 
-> There is deliberately **no general `bash` gear**. Shell access was removed from the default surface during the effect-boundary work: every subprocess a gear spawns now goes through the audited dispatch chokepoint under an operator allowlist. Sandboxed execution is available via `code_exec` / `sandbox_exec`.
+> Looking for `bash`? There isn't one — see [why there is no MCP runtime](#why-there-is-no-mcp-runtime) for the reasoning. Sandboxed execution is available via `code_exec` / `sandbox_exec`.
 
 #### File I/O & search
 
