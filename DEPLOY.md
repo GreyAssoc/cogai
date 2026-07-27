@@ -170,7 +170,7 @@ other compose stack:
 mkdir -p ~/cog && cd ~/cog
 
 # 2. Let the installer materialise the stack here.
-docker run --rm -it -v $(pwd):/setup greyassoc/cog-installer:v0.4.0
+docker run --rm -it -v $(pwd):/setup greyassoc/cog-installer:vX.Y.Z
 
 # 3. Edit .env. At minimum:
 #    COG_GATEWAY_TELEGRAM_TOKEN, COG_GATEWAY_ALLOWED_USER_IDS,

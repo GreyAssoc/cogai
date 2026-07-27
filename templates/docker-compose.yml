@@ -3,7 +3,7 @@
 # This is the installer's generated compose file with the templating
 # resolved, so you can use it directly. Two ways in:
 #
-#   Guided:     docker run --rm -it -v $(pwd):/setup greyassoc/cog-installer:v0.4.0
+#   Guided:     docker run --rm -it -v $(pwd):/setup greyassoc/cog-installer:vX.Y.Z
 #   By hand:    copy this file + env.example (as .env) into a directory,
 #               fill in .env, then `docker compose up -d`
 #
@@ -14,7 +14,7 @@
 
 services:
   gateway:
-    image: greyassoc/cogai:v0.4.0
+    image: greyassoc/cogai:vX.Y.Z
     env_file: .env
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -48,7 +48,7 @@ services:
   # Telegram gateway and shares the same Postgres trace store.
   #
   # gateway-discord:
-  #   image: greyassoc/cogai-discord:v0.4.0
+  #   image: greyassoc/cogai-discord:vX.Y.Z
   #   env_file: .env
   #   extra_hosts:
   #     - "host.docker.internal:host-gateway"

@@ -340,7 +340,7 @@ By default `docker-compose.yml` references `:latest`. To pin
 # docker-compose.yml
 services:
   gateway:
-    image: greyassoc/cogai:v0.4.0    # ← change here
+    image: greyassoc/cogai:vX.Y.Z    # ← change here
 ```
 
 Then `docker compose pull && docker compose up -d --force-recreate`.

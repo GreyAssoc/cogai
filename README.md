@@ -12,9 +12,11 @@
 Most agent frameworks keep a log of what the agent did. **In cog, the log
 *is* what the agent did.**
 
-Every action the runtime takes — every model call, tool invocation,
-sub-agent dispatch and chain step — is recorded as a pair of events in one
-strictly ordered, append-only, hash-linked log. Every view is then computed
+Every action the runtime takes — every model call and every tool
+invocation — is recorded as a pair of events in one strictly ordered,
+append-only, hash-linked log. (Sub-agent dispatches and chain steps are
+recorded too, currently as ordinary tool calls rather than events of their
+own.) Every view is then computed
 *from* that log: your session, the audit trail, the redacted transcript,
 the cost tally, the replay tape. Nothing is stored twice; nothing drifts
 out of sync.
@@ -108,8 +110,8 @@ boundary that creates the problem:
 | The server decides what a tool does | A gear is a Go function in this binary. No separate process, no install step that runs someone else's code. |
 | Approval is per-tool, not per-call | Every gear declares a **permission envelope the engine enforces before it is invoked**, evaluated against the actual arguments of that call. |
 | Tools can reach anything the process can | Gears **cannot reach raw filesystem, subprocess or network primitives at all.** Those live behind an internal `effect` package and are unexported at its boundary — the Go compiler refuses the import. |
-| Enforcement drifts over time | That boundary is a **build gate**, not a review convention. A guard fails the build on any new raw import, and it currently reports **zero exceptions** across the whole gear surface. |
-| The audit records intent, not effect | Every effect passes one dispatch chokepoint that writes an event **before** the call and another **after** it. The log records what happened, not what was requested — which is also precisely what makes replay work. |
+| Enforcement drifts over time | That boundary is a **build gate**, not a review convention: a guard walks every file in the gear package and its subpackages and fails the build on any new raw import. It currently records **four known exceptions** — the declarative-gear HTTP engine and one media-upload helper, each named in the guard with its reason. The count can shrink, never grow. |
+| The audit records intent, not effect | Every tool call is recorded as a **pair** of events — before and after — so the log carries what happened, not just what was asked for. That is what makes replay work. Honest scope: today the pairs are written by the agent loop at **tool granularity**. Effects *inside* a tool (its file reads, subprocesses, HTTP calls) pass the same chokepoint for authority and permission, but are not yet individually taped — that is in progress. |
 | Tool definitions can shift under you | **All executable code is fixed at compile time** — cog loads no third-party code at runtime, ever. You can add declarative gears (YAML) without recompiling, but those load *data, not code*: each runs the same engine-owned, code-reviewed handler inside an envelope validated when the file loads. The inventory can grow; the code that executes it cannot. |
 | Credentials spread across servers | One process, one credential surface, with secret-shaped strings scrubbed on the write path. |
 
@@ -212,7 +214,7 @@ The substrate is mid-flight. What holds today versus what doesn't:
 |---|---|
 | **Byte-exact replay** | **Works today** — through database persistence, across all 8 providers, property-tested. One residual: a pathologically large *incompressible* session stores a verifiable bound marker rather than the full tape. |
 | **Hash-linked, verifiable log** | **Works today.** Integrity-checked by default. It becomes **tamper-evident against someone holding database write access** only when you configure a signing key *and* keep the freshness anchor where that attacker can't reach it — realistic on managed Postgres, not on a single box. We don't use the stronger word for deployments that haven't earned it. |
-| **Selective disclosure** | Inclusion and consistency proofs are **built** — proving one interaction is in the sealed log without revealing the rest — but not yet the committed structure. |
+| **Selective disclosure** | Inclusion and consistency proofs are **implemented and tested** — proving one interaction is in the sealed log without revealing the rest — but **not yet wired to anything**: no command exposes them and the committed structure is still the linear chain. Working code, not a usable feature. |
 | **Replay & corpus tooling** | The guarantee holds; the **command-line tooling is built and tested but not yet released.** |
 | **Determinism** | **Honest by design.** A published table ranks how reproducible each provider can be; a run that *can't* be reproduced is reported as such, not papered over. |
 
@@ -285,6 +287,12 @@ Treat it as evidence of care, not as an external attestation.
 
 ## Install
 
+> **First public release pending.** The images and binaries referenced below
+> are not published yet — the [Releases](https://github.com/GreyAssoc/cogai/releases)
+> page and the Docker Hub tag lists are currently empty, so these commands
+> will not work today. They document the intended install once the first
+> release is cut. `vX.Y.Z` below stands for that release tag.
+
 ### Guided setup via Docker (recommended)
 
 If you have Docker installed, this is the fastest path. One
@@ -296,7 +304,7 @@ directory:
 
 ```bash
 mkdir cog && cd cog
-docker run --rm -it -v $(pwd):/setup greyassoc/cog-installer:v0.4.0
+docker run --rm -it -v $(pwd):/setup greyassoc/cog-installer:vX.Y.Z
 docker compose up -d
 ```
 
@@ -309,7 +317,7 @@ wired in automatically by the installer if you supply a Discord
 bot token:
 
 ```bash
-docker pull greyassoc/cogai-discord:v0.4.0
+docker pull greyassoc/cogai-discord:vX.Y.Z
 ```
 
 All three images publish multi-arch (`linux/amd64` + `linux/arm64`).
@@ -329,7 +337,7 @@ for the required env vars (Telegram token, allowed user IDs, at
 least one model provider key, Postgres URL).
 
 ```bash
-docker pull greyassoc/cogai:v0.4.0
+docker pull greyassoc/cogai:vX.Y.Z
 ```
 
 ### Native installer (no Docker prerequisite)
@@ -438,7 +446,7 @@ message.
 
 # Pro — the single-seat power tier
 
-*Shipping since v0.4.0, with its gates enforced at the trust boundary: Free gets a hard refusal, not a warning.*
+*Pro's gates are enforced in the engine today — Free gets a hard refusal, not a warning. The release carrying them is not yet tagged; see [Install](#install).*
 
 Free gives you one very good agent. **Pro gives you a coordinated system of them, a way to automate it, and the numbers to run it on.**
 
