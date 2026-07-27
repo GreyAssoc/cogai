@@ -1,138 +1,125 @@
 # cog — public distribution
 
-> Cog is a Go-native AI agent system you run yourself. This is the
-> public distribution surface: README, install instructions, the
-> public gear-authoring contract, and a [Releases page](https://github.com/GreyAssoc/cogai/releases)
-> hosting the compiled binaries.
->
-> The source lives in a private dev repo; you don't need it to run
-> cog Free.
+> A Go-native AI agent system you run yourself, built on an append-only,
+> hash-linked event log. This is the public distribution surface: install
+> instructions, the gear-authoring contract, and a
+> [Releases page](https://github.com/GreyAssoc/cogai/releases) for the
+> compiled binaries. The source lives in a private dev repo; you don't
+> need it to run cog Free.
 
 ---
 
-## What cog gives you
+## The thing that makes cog different
 
-A production-grade AI agent system that runs on your hardware:
+Most agent frameworks keep a log of what the agent did. **In cog, the log
+*is* what the agent did.**
 
-- **8 model providers** — Anthropic, OpenAI, Google Gemini,
-  DeepSeek, xAI, Qwen, Moonshot, z.ai. BYO keys; switch
-  per-message.
-- **Persistent memory** — pgvector-backed facts that survive
-  restarts. Cross-session, cross-project. Always free.
-- **89 typed gears** — file I/O, git, build, test, shell, web
-  fetch, `.docx` / `.xlsx` / `.pdf` / `.pptx` read+write, Google
-  Workspace, calendar, math, image generate/describe, audio
-  transcribe, text-to-speech, web search across multiple
-  backends, and more.
-- **37 built-in agents** — `cog-coder` (15 languages, flagship),
-  plus `general` / `researcher` / `writer` / `planner`, 4 helpers,
-  and 28 single-perspective code-review specialists.
-- **11 built-in skills** — procedural-knowledge files that
-  auto-trigger on matched prompts.
-- **Forensic-grade audit trail** — every turn is a typed Postgres
-  row (cost, provider, model, tokens including provider-side
-  reasoning tokens, failure-class as columns). Query with
-  Metabase / Looker / `psql`. Underneath, cog is being rebuilt on
-  an append-only, hash-linked event log that makes sessions
-  **byte-exact replayable** and the audit trail **verifiable
-  rather than merely trusted** — see
-  [what's being built](#whats-being-built--the-event-log-substrate).
-- **Local-first, BYO-keys, privacy-preserving, licence-light** —
-  cog runs on your machine, you supply your own model API keys,
-  your prompts + data live in your own Postgres, and the Free
-  tier needs no licence file, no signup, no account.
+Every action the runtime takes — every model call, tool invocation,
+sub-agent dispatch and chain step — is recorded as a pair of events in one
+strictly ordered, append-only, hash-linked log. Every view is then computed
+*from* that log: your session, the audit trail, the redacted transcript,
+the cost tally, the replay tape. Nothing is stored twice; nothing drifts
+out of sync.
 
-## Built-in agents
+Three things fall out of that which most agent stacks structurally cannot
+offer:
 
-All 37 agents below are bundled in the binary and available **free for every tier**. Invoke with `@<name>` in your bot, or set the agent in your session config. Paid tiers don't gate individual agent access — Pro+ gates *coordinated* execution (Council, orchestrator, agent teams).
+**Byte-exact replay.** Take a completed session, re-run it against its own
+recorded model and tool responses, and it reproduces byte-for-byte —
+*through the database*, not just in memory. That turns prompt changes and
+model upgrades into a regression test: change a prompt, replay real
+sessions, see exactly what moved.
 
-### General-purpose (9)
+**An audit trail you verify rather than trust.** Each event is
+cryptographically bound to its predecessor, so one value commits the whole
+history and any insertion, deletion, reorder or edit is detectable.
 
-| `@name` | Role |
+**Real runs become evaluation and training data.** Because the log is
+complete and schematised, trajectories fold into fine-tuning-shaped
+datasets, and one task can be diffed across several models.
+
+**Why cog can do this and most tools can't:** it owns its agent loop
+end-to-end — no vendor SDK, no MCP runtime, no shelling out to another
+agent binary. Tools are typed Go functions running *in* the process, so
+every effect crosses a boundary cog controls and can record. A stack whose
+tools live in separate processes cannot replay byte-exact: the boundary
+runs through something it doesn't own.
+
+### Where this honestly stands
+
+The substrate is mid-flight. What holds today versus what doesn't:
+
+| | Status |
 |---|---|
-| `general` | Default cog assistant. Friendly, honest, hands off to a specialist when one fits better. |
-| `cog-coder` | Flagship coding agent. 15 languages (bash, cpp, csharp, frontend, go, java, javascript, kotlin, php, python, ruby, rust, sql, swift, typescript) via language-specialist prompts auto-loaded by file extension. |
-| `researcher` | Web-search + cross-source synthesis with cited findings. |
-| `writer` | Long-form prose, structured docs, editing. Audience-aware, voice-preserving. |
-| `planner` | Structured execution plans — ordered steps with verification, dependencies, rollback. Drives plan mode. |
-| `lookup` | Factual-lookup specialist. Wikipedia → arXiv → web_search fallback for one-shot factual questions. |
-| `fact-check` | SUPPORTED / CONTRADICTED / INCONCLUSIVE on a single claim, cited from ≥2 independent sources. |
-| `media-reader` | Single file → right extractor (pdf / xlsx / office / image / audio) → plain text. |
-| `senior-reviewer` | Opt-in second pass that verifies / refines a primary model's draft. Higher accuracy at extra cost. |
+| **Byte-exact replay** | **Works today** — through database persistence, across all 8 providers, property-tested. One residual: a pathologically large *incompressible* session stores a verifiable bound marker rather than the full tape. |
+| **Hash-linked, verifiable log** | **Works today.** Integrity-checked by default. It becomes **tamper-evident against someone holding database write access** only when you configure a signing key *and* keep the freshness anchor where that attacker can't reach it — realistic on managed Postgres, not on a single box. We don't use the stronger word for deployments that haven't earned it. |
+| **Selective disclosure** | Inclusion and consistency proofs are **built** — proving one interaction is in the sealed log without revealing the rest — but not yet the committed structure. |
+| **Replay & corpus tooling** | The guarantee holds; the **command-line tooling is built and tested but not yet released.** |
+| **Determinism** | **Honest by design.** A published table ranks how reproducible each provider can be; a run that *can't* be reproduced is reported as such, not papered over. |
 
-### Code review — cross-language (10)
+## Enforcement at the boundary
 
-| `@name` | Concern | Tier |
-|---|---|---|
-| `security` | Vulnerability analysis, OWASP top 10, dependency risk | 1 VETO |
-| `compliance` | GDPR / regulatory / lawful basis | 1 VETO |
-| `data-integrity` | Type strictness, constraint coverage | 1 VETO |
-| `cross-language-security` | FFI / marshalling boundary security | 1 VETO |
-| `error-handling` | Error wrapping, fallback discipline, silent-failure detection | 2 |
-| `logging-audit` | Trace coverage without secret leakage | 2 |
-| `design-adherence` | Adherence to stated design / architecture | 2 |
-| `performance` | Hot paths, allocation, query plans | 3 |
-| `architect` | Module boundaries, dependency direction, layering | 3 |
-| `reviewer` | General code review — catches what specialists miss | 3 |
+The second thing worth knowing before the feature list: **cog refuses
+rather than degrades.**
 
-### Code review — Go (5)
+- **Tools are typed, permissioned Go functions.** Each declares a
+  permission envelope the engine enforces *before* invoking it — not a
+  convention, a type. Gears cannot reach raw filesystem, subprocess or
+  network primitives at all; every external effect routes through a single
+  dispatch chokepoint, and that's enforced by the package boundary rather
+  than by lint or review.
+- **Budgets are compared as integers in micro-USD**, so floating-point
+  drift can't slip a request past a spend ceiling. NaN or infinity in a
+  budget column refuses the request instead of degrading to "no cap", and
+  a per-user lock closes the race where two simultaneous requests both
+  observe "under cap".
+- **Policy lookups fail closed** in production posture — a database error
+  refuses the request rather than waving it through.
+- **A disabled gear is absent from the toolset**, not an error at call
+  time, so the model never sees a capability it isn't allowed to use.
+- **Path containment resolves symlinks**, `.git/` is refused in write
+  gears, and the per-project skills directory is refused outright in
+  default deployments because the agent's own `write` gear can reach it.
 
-| `@name` | Concern | Tier |
-|---|---|---|
-| `go-purist` | Idiomatic Go; would Rob Pike approve? | 3 |
-| `go-pragmatist` | Ship-vs-perfect tradeoffs in Go | 3 |
-| `go-pessimist` | Race conditions, resource leaks, what can fail | 2 |
-| `go-security` | Go-specific vulns, panic propagation, supply chain | 1 VETO |
-| `go-hacker` | Adversarial probing of Go code | 2 |
+Cog has **not** had a third-party security audit, and there is no SOC 2 or
+ISO 27001. The hardening above came from internal adversarial review —
+run by us, on our own code — plus the design guards that fail the build.
+Treat it as evidence of care, not as an external attestation.
 
-### Code review — Frontend (6)
+## What you get
 
-| `@name` | Concern | Tier |
-|---|---|---|
-| `fe-purist` | Semantic HTML, vanilla ES2020+ correctness | 3 |
-| `fe-pragmatist` | Browser-compat vs. cleanliness | 3 |
-| `fe-pessimist` | Async edge cases, event-handler leaks, DOM resilience | 2 |
-| `fe-security` | XSS, CSRF, CSP, supply chain | 1 VETO |
-| `fe-hacker` | Browser-side adversarial probing | 2 |
-| `fe-functional` | Functional correctness, event flow, state mutation | 3 |
+- **8 model providers** — Anthropic, OpenAI, Google Gemini, DeepSeek, xAI,
+  Qwen, Moonshot, z.ai. BYO keys, switch per message, no token markup, and
+  cog never restricts provider or model by tier.
+- **~100 typed gears** — file I/O, code intelligence, git and build
+  toolchains, sandboxed execution, web fetch and search, `.docx` /
+  `.xlsx` / `.pdf` / `.pptx` read and write, Google Workspace, email,
+  memory, cron and async tasks. [Full catalogue below](#reference--the-full-catalogues).
+- **37 built-in agents and 11 skills**, free on every tier — a flagship
+  coding agent across 15 languages, research and writing specialists, and
+  28 single-perspective code reviewers that Pro can run *as coordinated
+  panels* with a chair and VETO authority.
+- **Persistent pgvector memory** across restarts, cross-session and
+  cross-project. Never gated.
+- **Your data in your Postgres**, under a documented schema. Point Looker,
+  Metabase or `psql` at it and never ask permission.
+- **Local-first and BYO-keys** — cog runs on your hardware, you supply your
+  own model keys, and the Free tier needs no licence file, no signup and no
+  account.
 
-### Code review — Mobile / Kotlin (4)
+> **On lock-in, precisely.** Cog is closed-source and paid tiers are gated
+> by a signed licence, so this isn't open source and we won't pretend
+> otherwise. What you do get is **data portability**: your traces live in
+> your database under a schema we publish, you bring your own model keys
+> with no markup, there's no hardware fingerprinting, and if cog disappeared
+> tomorrow the binary you deployed keeps running and the SQL keeps
+> answering.
 
-| `@name` | Concern | Tier |
-|---|---|---|
-| `kotlin-purist` | Idiomatic Kotlin, structured concurrency | 3 |
-| `mobile-security` | Android security model, permission abuse, supply chain | 1 VETO |
-| `mobile-hacker` | Adversarial probing of mobile code | 2 |
-| `android-mobile-coding` | Jetpack Compose, Hilt, Room patterns | 3 |
+---
 
-### Code review — Integration (3)
+## Install
 
-| `@name` | Concern | Tier |
-|---|---|---|
-| `api-guardian` | API contract stability, version compatibility | 2 |
-| `data-flow` | End-to-end data flow correctness | 2 |
-| `failure-modes` | Failure injection, recovery paths | 2 |
-
-### Research helper (1)
-
-| `@name` | Concern | Tier |
-|---|---|---|
-| `ui-ux-researcher` | UI/UX patterns, accessibility | 3 |
-
-### The coder-review-coder loop
-
-The canonical Free-tier coding workflow. Reviewers don't have to be ganged up into a team to be useful — a single review pass between coder rounds catches most issues.
-
-```
-@cog-coder       writes / fixes code
-@<review-agent>  critiques (any single agent, e.g. @go-security)
-@cog-coder       revises based on the critique
-@<other-agent>   (optional) second-pass review
-```
-
-This loop ships as a CI-tested regression suite. The full agent reference is the tables above — every one of the 37 is in the binary on every tier.
-
-## Quick install — guided setup via Docker (recommended)
+### Guided setup via Docker (recommended)
 
 If you have Docker installed, this is the fastest path. One
 interactive container walks you through the same setup the native
@@ -143,7 +130,7 @@ directory:
 
 ```bash
 mkdir cog && cd cog
-docker run --rm -it -v $(pwd):/setup greyassoc/cog-installer:v0.3.11
+docker run --rm -it -v $(pwd):/setup greyassoc/cog-installer:latest
 docker compose up -d
 ```
 
@@ -156,7 +143,7 @@ wired in automatically by the installer if you supply a Discord
 bot token:
 
 ```bash
-docker pull greyassoc/cogai-discord:v0.3.11
+docker pull greyassoc/cogai-discord:latest
 ```
 
 All three images publish multi-arch (`linux/amd64` + `linux/arm64`).
@@ -170,10 +157,10 @@ for the required env vars (Telegram token, allowed user IDs, at
 least one model provider key, Postgres URL).
 
 ```bash
-docker pull greyassoc/cogai:v0.3.11
+docker pull greyassoc/cogai:latest
 ```
 
-## Install via the native installer (no Docker prerequisite)
+### Native installer (no Docker prerequisite)
 
 If you don't already have Docker installed and prefer a fully
 guided setup (the native installer prompts you through Docker
@@ -209,158 +196,6 @@ Verify your download integrity with:
 ```bash
 sha256sum -c SHA256SUMS --ignore-missing
 ```
-
-
-## Built-in skills (11, all tiers)
-
-Skills are procedural-knowledge YAMLs auto-injected into the system prompt when a regex trigger matches the user's prompt. They sit between gears (one callable) and agents (long-lived identity): a short recipe activated only when the model is about to do the matching kind of work. **All 11 ship in the binary and are free for every tier.** Add up to 3 custom skills on Free, unlimited on Pro+.
-
-Auto-trigger is on by default; toggle off globally via `COG_SKILLS_AUTO=false`. The model can also load any skill explicitly via the `skill_invoke(name)` gear.
-
-| Skill | Fires on prompts like… | What it does |
-|---|---|---|
-| `git_commit_workflow` | "commit these changes", "let's commit", "git commit" | Commit safely — status, diff, scoped add, why-not-what message. |
-| `code_review_protocol` | "review this PR", "check this code", "feedback on this" | Layered code review — correctness, security, tests, edge cases, readability. |
-| `research_with_citations` | "research", "look up", "find out about", "what's the latest on" | Multi-source research with explicit citations + cross-check. |
-| `safe_overwrite_check` | "overwrite", "replace this file", "rewrite this config" | Read-before-write pattern — never blind-overwrite an existing file. |
-| `debug_systematic` | "this is broken", "find the bug", "why does it crash" | Reproduce → isolate → test → fix → verify. No symptom-chasing. |
-| `incident_response` | "production is down", "outage", "incident" | Note timing, check logs, communicate, snapshot, postmortem. |
-| `check_email` | "check my email", "any new messages", "what's in my inbox" | Triage inbox into needs-attention / read-later / ignore. Offer to draft replies. |
-| `check_calendar` | "check my calendar", "what's on today", "do I have meetings" | Today's schedule with conflict / back-to-back / VIP flags + meeting-prep offer. |
-| `compose_email_carefully` | "send an email", "draft a reply", "compose" | Pre-send checklist — subject, recipients, tone, attachments, no auto-send. |
-| `meeting_prep` | "prepare for my meeting", "brief me on my next call" | Brief for an upcoming meeting from calendar + email + memory. |
-| `create_skill` | "create a new skill", "how do I author a skill" | Meta-skill — walks you through name, triggers, procedure, required gears, save path, and a smoke test for a new custom skill. |
-
-### Storage layers (highest precedence first)
-
-```
-<workdir>/.cog/skills/*.yaml   — per-project overrides (refused if inside a FileWriteRoot)
-~/.cog/skills/*.yaml           — operator-authored (the recommended layer)
-engine/skills/builtin/*.yaml   — the 11 built-ins, embedded into the binary
-```
-
-Same-name skills in a higher layer fully replace lower layers — operators override a built-in by dropping `~/.cog/skills/git_commit_workflow.yaml` rather than patching the binary. Name normalisation (TrimSpace + ToLower) means a near-alias like "Create_Skill " still resolves to the built-in `create_skill` key. The `<workdir>/.cog/skills/` layer is refused in default deployments because the agent's `write` gear can reach it — keep custom skills in `~/.cog/skills/` on the host.
-
-## Built-in gears (89, all tiers)
-
-Gears are typed Go functions the agent dispatches as tools. **None of the 89 gears below are tier-gated** — every gear in the binary is available on every tier including Free. What Pro+ unlocks is the *quota for adding your own* (custom_gears_max — Free 3, Pro unlimited) and the orchestration gears that coordinate multiple agents.
-
-### File I/O & search
-
-| Gear | Purpose |
-|---|---|
-| `read` | Read a file (text, code, or extracted `.docx` / `.xlsx` / `.pdf` / `.pptx`). Smart-truncates large files. |
-| `write` | Write or overwrite a file. Path-confined to `FileWriteRoots`. |
-| `edit` | Targeted edit — replace a string, patch a line range. Cheaper than full write. |
-| `list` | List directory contents with type, size, mtime. |
-| `find_files` | Glob across the read roots. Honours `.cog-ignore`. |
-| `search` | Regex content search across read roots. |
-| `file_info` | Stat a single path — size, mtime, type, content sample. |
-| `path_resolve` | Resolve a "label"-style path (`@active-jobs/foo.docx`) to a real fs path. |
-| `extract` | Generic text extractor; routes by extension to the right reader. |
-| `diff` | Compute a structured diff between two files or strings. |
-| `mkdir` / `move` / `copy` / `remove` / `touch` | Filesystem ops, write-root confined, pending-op confirmation for destructive actions. |
-
-### Shell, build, VCS
-
-| Gear | Purpose |
-|---|---|
-| `bash` | Execute a shell command. Allowlist-required in production; `COG_DISABLE_BASH=true` to disable. |
-| `run` | Project's test command (`project.commands.test`). Captures exit + duration + output. |
-| `git` | Structured `git status` / `git diff` / common subcommands. No shell pipe risk. |
-| `code_build` | Project's build command. Returns exit, duration, captured excerpt. |
-| `code_test` | Project's test suite. |
-| `code_status` | Aggregate of git status + last build/test status. |
-| `code_diff` | Pending diff vs HEAD or a named ref. |
-| `code_lint` | Run the configured linter. Returns structured findings when parseable. |
-| `code_format` | Run the configured formatter on a file. |
-
-### Code intelligence (cog's static analysis index)
-
-| Gear | Purpose |
-|---|---|
-| `code_outline` | File's top-level symbol map — funcs, types, consts with line ranges. |
-| `code_definition` | Where a symbol is defined — file + line range + doc excerpt. |
-| `code_callers` | Direct callers of a symbol. Graph-derived; no grep false-positives. |
-| `code_callees` | What a symbol calls. |
-| `code_imports` | Outgoing imports of a file. |
-| `code_impact` | Transitive callers of a symbol up to depth N — full blast radius of a change. |
-| `code_path` | Find a reference path between two symbols. |
-| `code_callers_global` / `code_impact_global` / `code_path_global` | Same three queries across the cross-project index. Operator opt-in. |
-| `code_exec` | Execute a snippet (Python or JavaScript) via the provider's native code execution where available. 30s cap locally. |
-
-### Web
-
-| Gear | Purpose |
-|---|---|
-| `fetch` | HTTP(S) GET with SSRF guard (blocks private / loopback / link-local). |
-| `web_search` | Multi-backend web search (Brave / Bing / DDG / Gemini-grounded) with key-aware backend ordering. |
-| `wikipedia` | Direct Wikipedia search + extract — prefer over `web_search` for encyclopedic questions. |
-| `arxiv` | arXiv paper search + metadata. |
-| `weather` | Current + forecast weather via Open-Meteo. |
-| `maps` | Geocode + directions via OSM-backed services. |
-| `youtube_transcript` | Pull a YouTube video's transcript by URL. |
-| `fx_rate` | Live FX rate between two currencies. |
-| `stock_quote` | Live stock quote by ticker. |
-
-### Media + document extraction & generation
-
-| Gear | Purpose |
-|---|---|
-| `pdf_extract` | Extract text + structure from a PDF. |
-| `xlsx_extract` | Extract structured cells + ranges from `.xlsx` / `.xlsm`. |
-| `audio_transcribe` | Transcribe an audio file (mp3 / m4a / wav / etc.) via Gemini. |
-| `image_describe` | Caption / describe an image. |
-| `image_generate` | Generate an image from a prompt. |
-| `text_to_speech` | Synthesise speech to an audio file. |
-| `docgen` | Generic document generation. |
-| `office_write` | Create `.docx` / `.xlsx` / `.pptx` / `.pdf` from structured content. |
-
-### Google Workspace (BYO OAuth)
-
-| Gear | Purpose |
-|---|---|
-| `gmail_list_unread` / `gmail_search` / `gmail_get` / `gmail_thread` | Read inbox: list unread, search, fetch a message, fetch a thread. |
-| `gmail_mark` / `gmail_send` | Mark read/unread/important; send a message. |
-| `calendar_list_events` / `calendar_get` / `calendar_find_free` | Read calendars: list, fetch, find free slots across calendars. |
-| `calendar_create` / `calendar_update` / `calendar_delete` | Write calendar: create / update / delete with pending-op confirmation. |
-| `drive_search` / `drive_get_metadata` / `drive_read` | Read Drive: search, metadata, content-as-text. |
-| `drive_upload` / `drive_share` | Write Drive: upload a file, share with another user. |
-| `sheets_read` / `sheets_list` | Read Sheets: cells/ranges, list sheets in a workbook. |
-| `sheets_write` / `sheets_append` / `sheets_clear` | Write Sheets: replace, append, clear ranges. |
-
-### Memory + state
-
-| Gear | Purpose |
-|---|---|
-| `remember` | Save a persona fact to pgvector-backed memory (cross-session, cross-project). |
-| `forget` | Remove a previously-saved fact. |
-
-### Cron + orchestration
-
-| Gear | Purpose | Tier |
-|---|---|---|
-| `cron_schedule` | List, add, remove, enable / disable, or run cron jobs. | Free |
-| `dispatch_agent` | Hand off the turn to a specialist built-in agent (e.g. `@researcher`). | Free |
-| `subagent` | Run a sub-cog with a separate context window for a focused subtask. | **Pro+** |
-| `task_start` / `task_status` / `task_result` / `task_update` / `task_list` / `task_cancel` | Async task management — fire-and-forget long-running gears that survive turn boundaries. | Free |
-
-### Specialised (UK party-wall surveying)
-
-| Gear | Purpose |
-|---|---|
-| `grey_clients_list` | List active client folders under the surveyor workspace. |
-| `grey_clients_find` | Fuzzy-find a client folder by name. |
-| `grey_docs_generate` | Generate surveyor documents (notices, letters, reports) into a timestamped subdir. |
-| `grey_docs_serve_notices` | Multi-recipient notice service flow. |
-
-### Time
-
-| Gear | Purpose |
-|---|---|
-| `date_time` | Current time, timezone, date arithmetic — the agent should never guess "today's date". |
-
----
 
 ## Tier matrix — what each tier unlocks
 
@@ -543,7 +378,7 @@ The enforcement underneath is engine-side and the same at every tier: budgets ar
 
 # Teams — multi-user governance
 
-**Status, up front:** the Teams tier is **planned, not yet purchasable.** The machinery below is built and has been through independent security review — the admin plane ships its admin UI, OIDC, signed-licence enforcement, and reporting and transparency endpoints. What isn't open yet is licence issuance for the tier, and there is no hosted SaaS: **self-hosting is the answer today.**
+**Status, up front:** the Teams tier is **planned, not yet purchasable.** The machinery below is built — the admin plane ships its admin UI, OIDC, signed-licence enforcement, and reporting and transparency endpoints. What isn't open yet is licence issuance for the tier, and there is no hosted SaaS: **self-hosting is the answer today.**
 
 Everything in Pro, **for every seat**, plus the whole admin plane.
 
@@ -658,39 +493,241 @@ Pricing for Pro / Teams is deliberately deferred — see [getcog.ai/pricing](htt
 
 ---
 
-# What's being built — the event-log substrate
+## Reference — the full catalogues
 
-Cog is mid-flight on a ground-up rewrite of its own foundations, and it's the reason the audit story above is worth taking seriously. It's summarised here because it changes what the product *is*, not just how fast it runs.
+Everything below ships in the binary and is available on **every tier, including Free**. Listed for reference; you don't need to read it to get started.
 
-**The idea in one line:** the log isn't a record of what the agent did — the log **is** what the agent did.
+### Agents (37)
 
-Every action the runtime takes — every model call, every tool invocation, every sub-agent dispatch, every chain step — is recorded as a pair of events in a single, strictly ordered, append-only, hash-linked log. Every view you can ask for is then computed *from* that log: your session, the audit trail, the redacted transcript, the cost tally, the replay tape. Nothing is stored twice, and nothing can drift out of sync with anything else.
+All 37 agents below are bundled in the binary and available **free for every tier**. Invoke with `@<name>` in your bot, or set the agent in your session config. Paid tiers don't gate individual agent access — Pro+ gates *coordinated* execution (Council, orchestrator, agent teams).
 
-Four things fall out of that, which no agent runtime you can currently buy offers:
+#### General-purpose (9)
 
-**Byte-exact replay.** Take a completed session and re-run it against its own recorded model and tool responses, and it reproduces byte-for-byte — including through the database, not just in memory. That's a regression gate on prompt changes and model upgrades: change a prompt, replay a thousand real sessions, see exactly what moved.
-
-**An audit trail you can verify rather than trust.** Each event is cryptographically bound to its predecessor, so the whole history is committed by a single value and any insertion, deletion, reorder or edit is detectable. Configure a signing key held outside the database and it becomes tamper-evident against someone who *has* database write access — the actual compliance threat model, rather than merely catching accidental corruption.
-
-**Real runs become training data.** Because the log is complete and schematised, trajectories fold into fine-tuning-shaped datasets at no extra cost.
-
-**Cross-model evaluation.** One task, several models, one diff.
-
-### Where it honestly stands
-
-We publish the gaps rather than rounding them up:
-
-| | Status |
+| `@name` | Role |
 |---|---|
-| Byte-exact replay | **Working**, including through database persistence, across all 8 providers, property-tested. One residual: a pathologically large *incompressible* session stores a verifiable bound marker rather than the full tape. |
-| Verifiable audit trail | **Working.** Hash-linked and integrity-checked by default; **tamper-evident** only when you configure a signing key *and* keep the freshness anchor on storage a database-level attacker can't reach — realistic on managed Postgres, not on a single box. We don't use the stronger word for deployments that haven't earned it. |
-| Selective disclosure | Inclusion and consistency proofs are **built** — proving one interaction is in the sealed log without revealing the rest — but not yet the committed structure. |
-| Replay tooling & corpus export | **Built and tested, not yet released.** They ship when the substrate lands. |
-| Determinism | **Honest by design.** A published table ranks how reproducible each provider can be, and a run that *can't* be reproduced is reported as such rather than papered over. |
+| `general` | Default cog assistant. Friendly, honest, hands off to a specialist when one fits better. |
+| `cog-coder` | Flagship coding agent. 15 languages (bash, cpp, csharp, frontend, go, java, javascript, kotlin, php, python, ruby, rust, sql, swift, typescript) via language-specialist prompts auto-loaded by file extension. |
+| `researcher` | Web-search + cross-source synthesis with cited findings. |
+| `writer` | Long-form prose, structured docs, editing. Audience-aware, voice-preserving. |
+| `planner` | Structured execution plans — ordered steps with verification, dependencies, rollback. Drives plan mode. |
+| `lookup` | Factual-lookup specialist. Wikipedia → arXiv → web_search fallback for one-shot factual questions. |
+| `fact-check` | SUPPORTED / CONTRADICTED / INCONCLUSIVE on a single claim, cited from ≥2 independent sources. |
+| `media-reader` | Single file → right extractor (pdf / xlsx / office / image / audio) → plain text. |
+| `senior-reviewer` | Opt-in second pass that verifies / refines a primary model's draft. Higher accuracy at extra cost. |
 
-**Why cog can do this and most tools can't:** it owns its agent loop end-to-end. No vendor SDK, no MCP runtime, no shelling out to someone else's agent binary. Tools are typed functions running *in* the process, so every effect crosses a boundary cog controls and can record. A stack whose tools live in separate processes structurally cannot replay byte-exact, because the boundary runs through something it doesn't own.
+#### Code review — cross-language (10)
 
-This underpins a second use for the same binary: an **audit-and-replay substrate** for teams who need to prove what an agent did, priced on the audit surface rather than the chat surface. If that's you, [get in touch](mailto:support@getcog.ai).
+| `@name` | Concern | Tier |
+|---|---|---|
+| `security` | Vulnerability analysis, OWASP top 10, dependency risk | 1 VETO |
+| `compliance` | GDPR / regulatory / lawful basis | 1 VETO |
+| `data-integrity` | Type strictness, constraint coverage | 1 VETO |
+| `cross-language-security` | FFI / marshalling boundary security | 1 VETO |
+| `error-handling` | Error wrapping, fallback discipline, silent-failure detection | 2 |
+| `logging-audit` | Trace coverage without secret leakage | 2 |
+| `design-adherence` | Adherence to stated design / architecture | 2 |
+| `performance` | Hot paths, allocation, query plans | 3 |
+| `architect` | Module boundaries, dependency direction, layering | 3 |
+| `reviewer` | General code review — catches what specialists miss | 3 |
+
+#### Code review — Go (5)
+
+| `@name` | Concern | Tier |
+|---|---|---|
+| `go-purist` | Idiomatic Go; would Rob Pike approve? | 3 |
+| `go-pragmatist` | Ship-vs-perfect tradeoffs in Go | 3 |
+| `go-pessimist` | Race conditions, resource leaks, what can fail | 2 |
+| `go-security` | Go-specific vulns, panic propagation, supply chain | 1 VETO |
+| `go-hacker` | Adversarial probing of Go code | 2 |
+
+#### Code review — Frontend (6)
+
+| `@name` | Concern | Tier |
+|---|---|---|
+| `fe-purist` | Semantic HTML, vanilla ES2020+ correctness | 3 |
+| `fe-pragmatist` | Browser-compat vs. cleanliness | 3 |
+| `fe-pessimist` | Async edge cases, event-handler leaks, DOM resilience | 2 |
+| `fe-security` | XSS, CSRF, CSP, supply chain | 1 VETO |
+| `fe-hacker` | Browser-side adversarial probing | 2 |
+| `fe-functional` | Functional correctness, event flow, state mutation | 3 |
+
+#### Code review — Mobile / Kotlin (4)
+
+| `@name` | Concern | Tier |
+|---|---|---|
+| `kotlin-purist` | Idiomatic Kotlin, structured concurrency | 3 |
+| `mobile-security` | Android security model, permission abuse, supply chain | 1 VETO |
+| `mobile-hacker` | Adversarial probing of mobile code | 2 |
+| `android-mobile-coding` | Jetpack Compose, Hilt, Room patterns | 3 |
+
+#### Code review — Integration (3)
+
+| `@name` | Concern | Tier |
+|---|---|---|
+| `api-guardian` | API contract stability, version compatibility | 2 |
+| `data-flow` | End-to-end data flow correctness | 2 |
+| `failure-modes` | Failure injection, recovery paths | 2 |
+
+#### Research helper (1)
+
+| `@name` | Concern | Tier |
+|---|---|---|
+| `ui-ux-researcher` | UI/UX patterns, accessibility | 3 |
+
+#### The coder-review-coder loop
+
+The canonical Free-tier coding workflow. Reviewers don't have to be ganged up into a team to be useful — a single review pass between coder rounds catches most issues.
+
+```
+@cog-coder       writes / fixes code
+@<review-agent>  critiques (any single agent, e.g. @go-security)
+@cog-coder       revises based on the critique
+@<other-agent>   (optional) second-pass review
+```
+
+This loop ships as a CI-tested regression suite. The full agent reference is the tables above — every one of the 37 is in the binary on every tier.
+
+### Skills (11)
+
+Skills are procedural-knowledge YAMLs auto-injected into the system prompt when a regex trigger matches the user's prompt. They sit between gears (one callable) and agents (long-lived identity): a short recipe activated only when the model is about to do the matching kind of work. **All 11 ship in the binary and are free for every tier.** Add up to 3 custom skills on Free, unlimited on Pro+.
+
+Auto-trigger is on by default; toggle off globally via `COG_SKILLS_AUTO=false`. The model can also load any skill explicitly via the `skill_invoke(name)` gear.
+
+| Skill | Fires on prompts like… | What it does |
+|---|---|---|
+| `git_commit_workflow` | "commit these changes", "let's commit", "git commit" | Commit safely — status, diff, scoped add, why-not-what message. |
+| `code_review_protocol` | "review this PR", "check this code", "feedback on this" | Layered code review — correctness, security, tests, edge cases, readability. |
+| `research_with_citations` | "research", "look up", "find out about", "what's the latest on" | Multi-source research with explicit citations + cross-check. |
+| `safe_overwrite_check` | "overwrite", "replace this file", "rewrite this config" | Read-before-write pattern — never blind-overwrite an existing file. |
+| `debug_systematic` | "this is broken", "find the bug", "why does it crash" | Reproduce → isolate → test → fix → verify. No symptom-chasing. |
+| `incident_response` | "production is down", "outage", "incident" | Note timing, check logs, communicate, snapshot, postmortem. |
+| `check_email` | "check my email", "any new messages", "what's in my inbox" | Triage inbox into needs-attention / read-later / ignore. Offer to draft replies. |
+| `check_calendar` | "check my calendar", "what's on today", "do I have meetings" | Today's schedule with conflict / back-to-back / VIP flags + meeting-prep offer. |
+| `compose_email_carefully` | "send an email", "draft a reply", "compose" | Pre-send checklist — subject, recipients, tone, attachments, no auto-send. |
+| `meeting_prep` | "prepare for my meeting", "brief me on my next call" | Brief for an upcoming meeting from calendar + email + memory. |
+| `create_skill` | "create a new skill", "how do I author a skill" | Meta-skill — walks you through name, triggers, procedure, required gears, save path, and a smoke test for a new custom skill. |
+
+#### Storage layers (highest precedence first)
+
+```
+<workdir>/.cog/skills/*.yaml   — per-project overrides (refused if inside a FileWriteRoot)
+~/.cog/skills/*.yaml           — operator-authored (the recommended layer)
+engine/skills/builtin/*.yaml   — the 11 built-ins, embedded into the binary
+```
+
+Same-name skills in a higher layer fully replace lower layers — operators override a built-in by dropping `~/.cog/skills/git_commit_workflow.yaml` rather than patching the binary. Name normalisation (TrimSpace + ToLower) means a near-alias like "Create_Skill " still resolves to the built-in `create_skill` key. The `<workdir>/.cog/skills/` layer is refused in default deployments because the agent's `write` gear can reach it — keep custom skills in `~/.cog/skills/` on the host.
+
+### Gears (~100)
+
+Gears are typed Go functions the agent dispatches as tools. **No gear is tier-gated** — every one in the binary is available on every tier including Free. Pro+ unlocks the *quota for adding your own* (Free 3, Pro unlimited) plus the orchestration gears.
+
+> There is deliberately **no general `bash` gear**. Shell access was removed from the default surface during the effect-boundary work: every subprocess a gear spawns now goes through the audited dispatch chokepoint under an operator allowlist. Sandboxed execution is available via `code_exec` / `sandbox_exec`.
+
+#### File I/O & search
+
+| Gear | Purpose |
+|---|---|
+| `read` | Read a file (text, code, or extracted `.docx` / `.xlsx` / `.pdf` / `.pptx`). Smart-truncates large files. |
+| `write` | Write or overwrite a file. Path-confined to `FileWriteRoots`. |
+| `edit` | Targeted edit — replace a string, patch a line range. Cheaper than full write. |
+| `list` | List directory contents with type, size, mtime. |
+| `find_files` | Glob across the read roots. Honours `.cog-ignore`. |
+| `search` | Regex content search across read roots. |
+| `file_info` | Stat a single path — size, mtime, type, content sample. |
+| `path_resolve` | Resolve a "label"-style path (`@active-jobs/foo.docx`) to a real fs path. |
+| `extract` | Generic text extractor; routes by extension to the right reader. |
+| `diff` | Compute a structured diff between two files or strings. |
+| `mkdir` / `move` / `copy` / `remove` / `touch` | Filesystem ops, write-root confined, pending-op confirmation for destructive actions. |
+
+#### Shell, build, VCS
+
+| Gear | Purpose |
+|---|---|
+| `git` | Structured `git status` / `git diff` / common subcommands. No shell pipe risk. |
+| `code_build` | Project's build command. Returns exit, duration, captured excerpt. |
+| `code_test` | Project's test suite. |
+| `code_status` | Aggregate of git status + last build/test status. |
+| `code_diff` | Pending diff vs HEAD or a named ref. |
+| `code_lint` | Run the configured linter. Returns structured findings when parseable. |
+| `code_format` | Run the configured formatter on a file. |
+
+#### Code intelligence (cog's static analysis index)
+
+| Gear | Purpose |
+|---|---|
+| `code_outline` | File's top-level symbol map — funcs, types, consts with line ranges. |
+| `code_definition` | Where a symbol is defined — file + line range + doc excerpt. |
+| `code_callers` | Direct callers of a symbol. Graph-derived; no grep false-positives. |
+| `code_callees` | What a symbol calls. |
+| `code_imports` | Outgoing imports of a file. |
+| `code_impact` | Transitive callers of a symbol up to depth N — full blast radius of a change. |
+| `code_path` | Find a reference path between two symbols. |
+| `code_callers_global` / `code_impact_global` / `code_path_global` | Same three queries across the cross-project index. Operator opt-in. |
+| `code_exec` | Execute a snippet (Python or JavaScript) via the provider's native code execution where available. 30s cap locally. |
+
+#### Web
+
+| Gear | Purpose |
+|---|---|
+| `fetch` | HTTP(S) GET with SSRF guard (blocks private / loopback / link-local). |
+| `web_search` | Multi-backend web search (Brave / Bing / DDG / Gemini-grounded) with key-aware backend ordering. |
+| `wikipedia` | Direct Wikipedia search + extract — prefer over `web_search` for encyclopedic questions. |
+| `arxiv` | arXiv paper search + metadata. |
+| `weather` | Current + forecast weather via Open-Meteo. |
+| `maps` | Geocode + directions via OSM-backed services. |
+| `youtube_transcript` | Pull a YouTube video's transcript by URL. |
+| `fx_rate` | Live FX rate between two currencies. |
+| `stock_quote` | Live stock quote by ticker. |
+
+#### Media + document extraction & generation
+
+| Gear | Purpose |
+|---|---|
+| `pdf_extract` | Extract text + structure from a PDF. |
+| `xlsx_extract` | Extract structured cells + ranges from `.xlsx` / `.xlsm`. |
+| `audio_transcribe` | Transcribe an audio file (mp3 / m4a / wav / etc.) via Gemini. |
+| `image_describe` | Caption / describe an image. |
+| `image_generate` | Generate an image from a prompt. |
+| `text_to_speech` | Synthesise speech to an audio file. |
+| `docgen` | Generic document generation. |
+| `office_write` | Create `.docx` / `.xlsx` / `.pptx` / `.pdf` from structured content. |
+
+#### Google Workspace (BYO OAuth)
+
+| Gear | Purpose |
+|---|---|
+| `gmail_list_unread` / `gmail_search` / `gmail_get` / `gmail_thread` | Read inbox: list unread, search, fetch a message, fetch a thread. |
+| `gmail_mark` / `gmail_send` | Mark read/unread/important; send a message. |
+| `calendar_list_events` / `calendar_get` / `calendar_find_free` | Read calendars: list, fetch, find free slots across calendars. |
+| `calendar_create` / `calendar_update` / `calendar_delete` | Write calendar: create / update / delete with pending-op confirmation. |
+| `drive_search` / `drive_get_metadata` / `drive_read` | Read Drive: search, metadata, content-as-text. |
+| `drive_upload` / `drive_share` | Write Drive: upload a file, share with another user. |
+| `sheets_read` / `sheets_list` | Read Sheets: cells/ranges, list sheets in a workbook. |
+| `sheets_write` / `sheets_append` / `sheets_clear` | Write Sheets: replace, append, clear ranges. |
+
+#### Memory + state
+
+| Gear | Purpose |
+|---|---|
+| `remember` | Save a persona fact to pgvector-backed memory (cross-session, cross-project). |
+| `forget` | Remove a previously-saved fact. |
+
+#### Cron + orchestration
+
+| Gear | Purpose | Tier |
+|---|---|---|
+| `cron_schedule` | List, add, remove, enable / disable, or run cron jobs. | Free |
+| `dispatch_agent` | Hand off the turn to a specialist built-in agent (e.g. `@researcher`). | Free |
+| `subagent` | Run a sub-cog with a separate context window for a focused subtask. | **Pro+** |
+| `task_start` / `task_status` / `task_result` / `task_update` / `task_list` / `task_cancel` | Async task management — fire-and-forget long-running gears that survive turn boundaries. | Free |
+
+#### Time
+
+| Gear | Purpose |
+|---|---|
+| `date_time` | Current time, timezone, date arithmetic — the agent should never guess "today's date". |
+
+---
 
 ## Authoring declarative gears
 
@@ -737,4 +774,3 @@ under the same terms as the rest of cog.
 **Issues & support:** [github.com/GreyAssoc/cogai/issues](https://github.com/GreyAssoc/cogai/issues) · support@getcog.ai
 **Domain:** [getcog.ai](https://getcog.ai)
 **Contact:** Steve Whitehead — steve.w@greyandassociates.co.uk
-
