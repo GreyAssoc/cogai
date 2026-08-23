@@ -15,6 +15,7 @@
 services:
   gateway:
     image: greyassoc/cogai:vX.Y.Z
+    pull_policy: always
     env_file: .env
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -38,6 +39,9 @@ services:
       - './skills/custom:/root/.cog/skills:ro'
       - './gears:/root/.cog/gears:ro'
       - './agents:/root/.cog/agents:rw'
+      # Install directory (licence.json, .env). Buyers drop the
+      # Stripe-issued licence.json next to this compose file.
+      - './:/opt/cog-install:ro'
     depends_on:
       postgres:
         condition: service_healthy
@@ -49,11 +53,13 @@ services:
   #
   # gateway-discord:
   #   image: greyassoc/cogai-discord:vX.Y.Z
+  #   pull_policy: always
   #   env_file: .env
   #   extra_hosts:
   #     - "host.docker.internal:host-gateway"
   #   volumes:
   #     - './workspace:/workspace:rw'
+  #     - './:/opt/cog-install:ro'
   #   depends_on:
   #     postgres:
   #       condition: service_healthy

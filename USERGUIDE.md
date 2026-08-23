@@ -4,9 +4,9 @@ Practical handbook for using cog day-to-day: chatting, dispatching
 agents, changing models, authoring your own agents/skills/gears, and
 keeping the install up to date.
 
-> Looking for installation? See **[DEPLOY.md](../cogai/DEPLOY.md)** in
-> the public distribution. This guide assumes cog is already running
-> on your Telegram (and optionally Discord) bot.
+> Looking for installation? See **[DEPLOY.md](./DEPLOY.md)**. This
+> guide assumes cog is already running on your Telegram (and optionally
+> Discord) bot. This public repo follows private `GreyAssoc/cog`.
 
 ---
 
@@ -347,7 +347,7 @@ Then `docker compose pull && docker compose up -d --force-recreate`.
 
 ### Watching for new releases
 
-- **Source:** https://github.com/GreyAssoc/cogai/releases — every tag
+- **Releases (this public repo):** https://github.com/GreyAssoc/cogai/releases — every tag
 - **Mirror (binaries + signed SHA256SUMS):**
   https://github.com/GreyAssoc/cogai/releases — every tag
 - **Docker Hub:**

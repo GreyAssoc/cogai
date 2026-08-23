@@ -5,6 +5,12 @@
 >(Anthropic, OpenAI, Gemini, DeepSeek, xAI, Qwen, Moonshot, z.ai) and switch per message.
 >Your traces stay in your Postgres.
 
+This repository is the **public distribution**. It has docs, templates,
+and release artefacts. It does **not** contain source. The private
+`GreyAssoc/cog` repo is the source of truth; this tree follows it.
+Images are built there and pushed to Docker Hub `greyassoc/cogai`.
+Do not add a cogai-only Docker build — there is nothing here to compile.
+
 ---
 
 ## The thing that makes cog different
@@ -1151,8 +1157,11 @@ cog-gear-lint my_gear.yaml
 Closed-source proprietary. See [LICENSE](./LICENSE).
 
 The Free tier is perpetual, single-seat, BYO-keys; no licence file
-or signup required. Paid tiers (Pro / Teams) require an
-Ed25519-signed licence file issued on subscription.
+or signup required. Pro is Stripe Checkout on
+[getcog.ai/pricing](https://getcog.ai/pricing): download `licence.json`
+from the success page, drop it next to `docker-compose.yml`, restart.
+Online Pro checks in daily so cancelling in Stripe demotes the
+running binary. Air-gap: `COG_LICENCE_OFFLINE=1`.
 
 The schema files (`cog_gear.v1.schema.{yaml,json}`) and the example
 gear declarations are published as the public contract for
